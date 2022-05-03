@@ -10,7 +10,11 @@ interface IBridge is ICommon {
         bytes32 validateSetHash
     );
 
-    event TransferToNamada(uint256 indexed nonce, address[] froms, string[] tos, uint256[] amounts);
+    event TransferToNamada(
+        uint256 indexed nonce,
+        address[] froms,
+        uint256[] amounts
+    );
 
     event TrasferToECR(
         uint256 indexed nonce,
@@ -36,14 +40,7 @@ interface IBridge is ICommon {
 
     function transferToNamada(
         address[] calldata froms,
-        string[] calldata tos,
         uint256[] calldata amounts
-    ) external;
-
-    function withdraw(
-        ValidatorSetArgs calldata validatorSetArgs,
-        Signature[] calldata signatures,
-        address to
     ) external;
 
     function authorize(
@@ -51,4 +48,6 @@ interface IBridge is ICommon {
         Signature[] calldata signatures,
         bytes32 message
     ) external view returns (bool);
+
+    function withdraw(address payable to) external;
 }

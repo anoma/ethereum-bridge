@@ -15,12 +15,13 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
-    // change to private if prod
     bytes32 public lastValidatorSetHash;
     uint256 public lastValidatorSetNonce = 0;
 
-    uint256 private lastTransferToERCNone;
-    uint256 private lastTransferToNamadaNonce;
+    uint256 private lastTransferToERC20Nonce = 0;
+    uint256 private lastTransferToNamadaNonce = 0;
+
+    uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
     IHub private hub;
 
@@ -88,8 +89,8 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 _batchNonce
     ) external nonReentrant {
         require(
-            _batchNonce > lastTransferToERCNone &&
-                _batchNonce + 10000 < lastTransferToERCNone,
+            _batchNonce > lastTransferToERC20Nonce &&
+                lastTransferToERC20Nonce + MAX_NONCE_INCREMENT > _batchNonce,
             "Invalid Nonce"
         );
         require(
@@ -122,27 +123,26 @@ contract Bridge is IBridge, ReentrancyGuard {
             "Invalid validator set signature."
         );
 
-        lastTransferToERCNone = _batchNonce;
+        lastTransferToERC20Nonce = _batchNonce;
 
         for (uint256 i = 0; i < _amounts.length; ++i) {
             IERC20(_froms[i]).safeTransfer(_tos[i], _amounts[i]);
         }
 
-        emit TrasferToECR(_batchNonce, _froms, _tos, _amounts);
+        emit TrasferToECR(lastTransferToERC20Nonce, _froms, _tos, _amounts);
     }
 
     function transferToNamada(
         address[] calldata _froms,
-        string[] calldata _tos,
         uint256[] calldata _amounts
     ) external nonReentrant {
-        require(
-            _isValidBatch(_froms.length, _tos.length, _amounts.length),
-            "Invalid batch."
-        );
+        require(_froms.length == _amounts.length, "Invalid batch.");
+
+        uint256[] memory amounts = new uint256[](_amounts.length);
 
         for (uint256 i = 0; i < _amounts.length; ++i) {
-            uint256 currentBalance = IERC20(_froms[i]).balanceOf(address(this));
+            uint256 preBalance = IERC20(_froms[i]).balanceOf(address(this));
+
             IERC20(_froms[i]).safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -150,11 +150,13 @@ contract Bridge is IBridge, ReentrancyGuard {
             );
 
             uint256 postBalance = IERC20(_froms[i]).balanceOf(address(this));
-            require(currentBalance <= postBalance, "Invalid transfer.");
+            require(postBalance > preBalance, "Invalid transfer.");
+
+            amounts[i] = postBalance - preBalance;
         }
-        
+
         lastTransferToNamadaNonce = lastTransferToNamadaNonce + 1;
-        emit TransferToNamada(lastTransferToNamadaNonce, _froms, _tos, _amounts);
+        emit TransferToNamada(lastTransferToNamadaNonce, _froms, amounts);
     }
 
     function updateValidatorSet(
@@ -165,7 +167,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         require(
             _newValidatorSetArgs.nonce > _currentValidatorSetArgs.nonce &&
                 _newValidatorSetArgs.nonce <
-                _currentValidatorSetArgs.nonce + 1000,
+                _currentValidatorSetArgs.nonce + MAX_NONCE_INCREMENT,
             "Invalid validatorSetNonce"
         );
         require(
@@ -210,11 +212,15 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
     }
 
-    function withdraw(
-        ValidatorSetArgs calldata validatorSetArgs,
-        Signature[] calldata signatures,
-        address to
-    ) external {}
+    function withdraw(address payable to)
+        external
+        onlyLatestGovernanceContract
+    {
+        require(to != address(0), "Invalid address.");
+
+        uint256 self = payable(address(this)).balance;
+        to.transfer(self);
+    }
 
     function checkValidatorSetVotingPowerAndSignature(
         ValidatorSetArgs calldata validatorSet,
@@ -284,13 +290,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     ) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
-                    version,
-                    "bridge",
-                    validators,
-                    powers,
-                    nonce
-                )
+                abi.encodePacked(version, "bridge", validators, powers, nonce)
             );
     }
 
@@ -353,5 +353,11 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 _amounts
     ) internal pure returns (bool) {
         return _froms == _tos && _froms == _amounts;
+    }
+
+    modifier onlyLatestGovernanceContract() {
+        address governanceAddress = hub.getContract("governance");
+        require(msg.sender == governanceAddress, "Invalid caller.");
+        _;
     }
 }

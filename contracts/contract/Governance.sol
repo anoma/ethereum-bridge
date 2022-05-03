@@ -16,6 +16,8 @@ contract Governance is IGovernance {
     bytes32 public lastValidatorSetHash;
     uint256 public lastValidatorSetNonce = 0;
 
+    uint256 private constant MAX_NONCE_INCREMENT = 10000;
+
     IHub private hub;
 
     constructor(
@@ -32,7 +34,11 @@ contract Governance is IGovernance {
         );
 
         version = _version;
-        lastValidatorSetHash = computeValidatorSetHash(_validators, _powers, lastValidatorSetNonce);
+        lastValidatorSetHash = computeValidatorSetHash(
+            _validators,
+            _powers,
+            lastValidatorSetNonce
+        );
         thresholdVotingPower = _thresholdVotingPower;
         hub = IHub(_hub);
     }
@@ -45,22 +51,13 @@ contract Governance is IGovernance {
     ) external {
         require(_address != address(0), "Invalid address");
         bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                version,
-                "upgradeContract",
-                _name,
-                _address
-            )
+            abi.encodePacked(version, "upgradeContract", _name, _address)
         );
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         require(
-            bridge.authorize(
-                _validators,
-                _signatures,
-                messageHash
-            ),
+            bridge.authorize(_validators, _signatures, messageHash),
             "Unauthorized."
         );
 
@@ -82,11 +79,7 @@ contract Governance is IGovernance {
         IBridge bridge = IBridge(bridgeAddress);
 
         require(
-            bridge.authorize(
-                _validators,
-                _signatures,
-                messageHash
-            ),
+            bridge.authorize(_validators, _signatures, messageHash),
             "Unauthorized."
         );
 
@@ -100,7 +93,7 @@ contract Governance is IGovernance {
     ) external {
         require(
             lastValidatorSetNonce < _newValidatorSetArgs.nonce &&
-                lastValidatorSetNonce + 10000 > _newValidatorSetArgs.nonce,
+                lastValidatorSetNonce + MAX_NONCE_INCREMENT > _newValidatorSetArgs.nonce,
             "Invalid nonce."
         );
 
@@ -136,7 +129,7 @@ contract Governance is IGovernance {
     ) private view returns (bool) {
         require(
             _validators.nonce > lastValidatorSetNonce &&
-                lastValidatorSetNonce + 10000 < _validators.nonce,
+                lastValidatorSetNonce + MAX_NONCE_INCREMENT < _validators.nonce,
             "Invalid nonce."
         );
         require(
@@ -144,8 +137,7 @@ contract Governance is IGovernance {
             "Malformed input."
         );
         require(
-            computeValidatorSetHash(_validators) ==
-                lastValidatorSetHash,
+            computeValidatorSetHash(_validators) == lastValidatorSetHash,
             "Invalid validatorSetHash"
         );
 
@@ -169,6 +161,23 @@ contract Governance is IGovernance {
         return powerAccumulator >= thresholdVotingPower;
     }
 
+    function withdraw(
+        ValidatorSetArgs calldata _validators,
+        Signature[] calldata _signatures,
+        address payable to
+    ) external {
+        bytes32 messageHash = computeWithdrawHash(_validators, to);
+        require(
+            authorize(_validators, _signatures, messageHash),
+            "Unauthorized."
+        );
+
+        address bridgeAddress = hub.getContract("bridge");
+        IBridge bridge = IBridge(bridgeAddress);
+
+        bridge.withdraw(to);
+    }
+
     function isValidSignature(
         address _signer,
         bytes32 _messageHash,
@@ -186,9 +195,28 @@ contract Governance is IGovernance {
         return error == ECDSA.RecoverError.NoError && _signer == signer;
     }
 
-    function computeValidatorSetHash(
-        ValidatorSetArgs calldata validatorSetArgs
+    function computeWithdrawHash(
+        ValidatorSetArgs calldata validatorSetArgs,
+        address payable addr
     ) internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    version,
+                    "withdraw",
+                    validatorSetArgs.validators,
+                    validatorSetArgs.powers,
+                    validatorSetArgs.nonce,
+                    addr
+                )
+            );
+    }
+
+    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs)
+        internal
+        view
+        returns (bytes32)
+    {
         return
             keccak256(
                 abi.encodePacked(

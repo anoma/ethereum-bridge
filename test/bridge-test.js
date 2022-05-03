@@ -1,16 +1,19 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash } = require("./utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
 
 describe("Bridge", function () {
     let Hub;
     let Bridge;
+    let Token;
     let hub;
     let bridge;
+    let token;
     let signers;
     let validatorsAddresses;
     let normalizedPowers;
     let powerThreshold;
+    const maxTokenSupply = 1000000000;
 
     beforeEach(async function () {
         const totalValidators = 10;
@@ -23,12 +26,16 @@ describe("Bridge", function () {
 
         Hub = await ethers.getContractFactory("Hub");
         Bridge = await ethers.getContractFactory("Bridge");
+        Token = await ethers.getContractFactory("Token");
 
         hub = await Hub.deploy();
         const hubAddress = hub.address;
  
         bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, powerThreshold, hubAddress);
         await bridge.deployed();
+
+        token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
+        await token.deployed();
     });
 
     it("Initialize contract testing", async function () {
@@ -78,8 +85,8 @@ describe("Bridge", function () {
         expect(await bridge.lastValidatorSetNonce()).to.be.equal(1);
 
         // invalid too big nonce 
-        const newValidatorSetArgsTooBigNonce = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 10000)
-        const newValidatorSetHashTooBigNonce = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 10000, "bridge")
+        const newValidatorSetArgsTooBigNonce = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 10003)
+        const newValidatorSetHashTooBigNonce = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 10003, "bridge")
         const signaturesTooBigNonce = await generateSignatures(newSigners, newValidatorSetHashTooBigNonce);
 
         const bridgeInvalidTooBigNonce = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsTooBigNonce, signaturesTooBigNonce)
@@ -163,4 +170,87 @@ describe("Bridge", function () {
         const result = await bridge.authorize(currentValidatorSetArgs, signatures, messageHash)
         expect(result).to.be.equal(true)
     });
+
+    it("transferToERC testing", async function () {
+        const toAddresses = [ethers.Wallet.createRandom().address]
+        const fromAddresses = [token.address]
+        const amounts = [10000]
+        const lastValidatorSetHash = await bridge.lastValidatorSetHash();
+        const batchNonce = 2;
+
+        const preBridgeBalance = await token.balanceOf(bridge.address);
+        expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+
+        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
+        const messageHash = generateBatchTransferHash(
+            fromAddresses,
+            toAddresses,
+            amounts,
+            batchNonce,
+            lastValidatorSetHash,
+            "transfer"
+        );
+        const signatures = await generateSignatures(signers, messageHash);
+
+        await bridge.transferToERC(
+            currentValidatorSetArgs,
+            signatures,
+            fromAddresses,
+            toAddresses,
+            amounts,
+            batchNonce
+        );
+        const balance = await token.balanceOf(toAddresses[0]);
+        expect(balance).to.be.equal(ethers.BigNumber.from(amounts[0]))
+
+        const balanceBridge = await token.balanceOf(bridge.address);
+        expect(balanceBridge).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0]))
+    });
+
+    it("transferToNamada testing", async function () {
+        const [newWallet] = await ethers.getSigners()
+        const toAddresses = [newWallet.address]
+        const fromAddresses = [token.address]
+        const amounts = [10000]
+        const lastValidatorSetHash = await bridge.lastValidatorSetHash();
+        const batchNonce = 2;
+        const transferAmount = 900;
+
+        const preBridgeBalance = await token.balanceOf(bridge.address);
+        expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+
+        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
+        const messageHash = generateBatchTransferHash(
+            fromAddresses,
+            toAddresses,
+            amounts,
+            batchNonce,
+            lastValidatorSetHash,
+            "transfer"
+        );
+        const signatures = await generateSignatures(signers, messageHash);
+
+        await bridge.transferToERC(
+            currentValidatorSetArgs,
+            signatures,
+            fromAddresses,
+            toAddresses,
+            amounts,
+            batchNonce
+        );
+        const balance = await token.balanceOf(newWallet.address);
+        expect(balance).to.be.equal(ethers.BigNumber.from(amounts[0]))
+
+        const balanceBridge = await token.balanceOf(bridge.address);
+        expect(balanceBridge).to.be.equal(ethers.BigNumber.from(preBridgeBalance - amounts[0]))
+
+        await token.approve(bridge.address, transferAmount)
+
+        await bridge.connect(newWallet).transferToNamada(
+            fromAddresses,
+            [transferAmount]
+        );
+    });
+
+
 })

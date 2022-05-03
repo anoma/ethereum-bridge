@@ -32,4 +32,10 @@ interface IGovernance is ICommon {
         ValidatorSetArgs calldata _newValidatorSetArgs,
         Signature[] calldata _signatures
     ) external;
+
+    function withdraw(
+        ValidatorSetArgs calldata _validators,
+        Signature[] calldata _signatures,
+        address payable to
+    ) external;
 }
