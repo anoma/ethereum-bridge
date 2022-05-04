@@ -16,6 +16,7 @@ describe("Bridge", function () {
     const maxTokenSupply = 1000000000;
 
     beforeEach(async function () {
+        const [_, governanceAddress] = await ethers.getSigners();
         const totalValidators = 10;
         const normalizedThreshold = normalizeThreshold();
         const powers = randomPowers(totalValidators);
@@ -36,6 +37,9 @@ describe("Bridge", function () {
 
         token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
         await token.deployed();
+
+        await hub.addContract("governance", governanceAddress.address);
+        await hub.completeContractInit();
     });
 
     it("Initialize contract testing", async function () {

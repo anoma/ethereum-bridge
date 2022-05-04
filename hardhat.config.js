@@ -16,9 +16,9 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: parseInt(process.env.RUNS) || 200,
       },
-      viaIR: true,
+      viaIR: (process.env.VIAIR  === 'true'),
     },
   },
   networks: {
@@ -29,7 +29,7 @@ module.exports = {
     },
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS,
+    enabled: (process.env.REPORT_GAS  === 'true'),
     currency: "USD",
     noColors: true,
     coinmarketcap: process.env.COINMARKETCAP

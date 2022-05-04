@@ -136,7 +136,7 @@ describe("Governance", function () {
 
     it("Upgrade contract testing", async function () {
         const newContractAddress = ethers.Wallet.createRandom().address
-        const contractName = "bridge"
+        const contractName = "governance"
 
         let abiEncoded = ethers.utils.solidityPack(
             ["uint256", "string", "string", "address", ],
@@ -148,24 +148,7 @@ describe("Governance", function () {
         const signatures = await generateSignatures(bridgeSigners, messageHash);
         await governance.upgradeContract(currentValidatorSetArgs, signatures, contractName, newContractAddress)
 
-        const newAddress = await hub.getContract("bridge");
-        expect(newAddress).to.be.equal(newContractAddress);
-    });
-
-    it("Add contract testing", async function () {
-        const newContractAddress = ethers.Wallet.createRandom().address
-        const contractName = "new"
-
-        const  messageHash = generateArbitraryHash(
-            ["uint256", "string", "string", "address"],
-            [1, "addContract", contractName, newContractAddress]
-        );
-        
-        const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
-        const signatures = await generateSignatures(bridgeSigners, messageHash);
-        await governance.addContract(currentValidatorSetArgs, signatures, contractName, newContractAddress)
-
-        const newAddress = await hub.getContract("new");
+        const newAddress = await hub.getContract(contractName);
         expect(newAddress).to.be.equal(newContractAddress);
     });
 

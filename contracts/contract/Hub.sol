@@ -10,12 +10,10 @@ contract Hub is IHub {
     address private owner;
     bool private initialiazed = false;
 
-    /// Construct Hub
     constructor() {
         owner = msg.sender;
     }
 
-    // once the storage is initialized, only governance contract can modify its storage.
     modifier onlyLatestGovernanceContract() {
         if (initialiazed) {
             string memory contractName = "governance";

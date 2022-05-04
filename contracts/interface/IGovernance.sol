@@ -10,32 +10,33 @@ interface IGovernance is ICommon {
         address[] validators,
         bytes32 validateSetHash
     );
-    event NewContract(string indexed name, address _address);
-    event UpgradedContract(string indexed name, address _address);
+    event NewContract(string indexed name, address addr);
+    event UpgradedContract(string indexed name, address addr);
 
     function upgradeContract(
-        ValidatorSetArgs calldata _validators,
-        Signature[] calldata _signatures,
-        string calldata _name,
-        address _address
+        ValidatorSetArgs calldata validators,
+        Signature[] calldata signatures,
+        string calldata name,
+        address addr
     ) external;
 
     function addContract(
-        ValidatorSetArgs calldata _validators,
-        Signature[] calldata _signatures,
-        string calldata _name,
-        address _address
+        ValidatorSetArgs calldata validators,
+        Signature[] calldata signatures,
+        string calldata name,
+        address addr
     ) external;
 
     function updateGovernanceSet(
-        ValidatorSetArgs calldata _currentValidatorSetArgs,
-        ValidatorSetArgs calldata _newValidatorSetArgs,
-        Signature[] calldata _signatures
+        ValidatorSetArgs calldata currentValidatorSetArgs,
+        ValidatorSetArgs calldata newValidatorSetArgs,
+        Signature[] calldata signatures
     ) external;
 
     function withdraw(
-        ValidatorSetArgs calldata _validators,
-        Signature[] calldata _signatures,
+        ValidatorSetArgs calldata validators,
+        Signature[] calldata signatures,
+        address[] calldata tokens,
         address payable to
     ) external;
 }

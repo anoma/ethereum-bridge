@@ -22,6 +22,8 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private lastTransferToNamadaNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
+    uint256 private constant MAX_UINT =
+        115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
     IHub private hub;
 
@@ -123,12 +125,11 @@ contract Bridge is IBridge, ReentrancyGuard {
             "Invalid validator set signature."
         );
 
-        lastTransferToERC20Nonce = _batchNonce;
-
         for (uint256 i = 0; i < _amounts.length; ++i) {
             IERC20(_froms[i]).safeTransfer(_tos[i], _amounts[i]);
         }
 
+        lastTransferToERC20Nonce = _batchNonce;
         emit TrasferToECR(lastTransferToERC20Nonce, _froms, _tos, _amounts);
     }
 
@@ -212,14 +213,19 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
     }
 
-    function withdraw(address payable to)
+    function withdraw(address[] calldata _tokens, address payable _to)
         external
         onlyLatestGovernanceContract
     {
-        require(to != address(0), "Invalid address.");
+        require(_to != address(0), "Invalid address.");
+        address self = address(this);
 
-        uint256 self = payable(address(this)).balance;
-        to.transfer(self);
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            uint256 balance = IERC20(_tokens[i]).balanceOf(self);
+            IERC20(_tokens[i]).safeTransfer(_to, balance);
+        }
+
+        selfdestruct(_to);
     }
 
     function checkValidatorSetVotingPowerAndSignature(

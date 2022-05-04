@@ -16,6 +16,8 @@ contract Governance is IGovernance {
     bytes32 public lastValidatorSetHash;
     uint256 public lastValidatorSetNonce = 0;
 
+    uint256 private lastWithdrawNonce = 0;
+
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
     IHub private hub;
@@ -50,6 +52,12 @@ contract Governance is IGovernance {
         address _address
     ) external {
         require(_address != address(0), "Invalid address");
+        require(
+            keccak256(abi.encodePacked(_name)) != 
+            keccak256(abi.encodePacked("bridge")), 
+        "Invalid contract name"
+        );
+
         bytes32 messageHash = keccak256(
             abi.encodePacked(version, "upgradeContract", _name, _address)
         );
@@ -62,6 +70,28 @@ contract Governance is IGovernance {
         );
 
         hub.upgradeContract(_name, _address);
+    }
+
+    function upgradeBridgeContract(
+        ValidatorSetArgs calldata _validators,
+        Signature[] calldata _signatures,
+        address[] calldata _tokens,
+        address payable _address
+    ) external {
+        require(_address != address(0), "Invalid address");
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(version, "upgradeContract", "bridge", _address)
+        );
+        address bridgeAddress = hub.getContract("bridge");
+        IBridge bridge = IBridge(bridgeAddress);
+
+        require(
+            bridge.authorize(_validators, _signatures, messageHash),
+            "Unauthorized."
+        );
+
+        hub.upgradeContract("bridge", _address);
+        bridge.withdraw(_tokens, _address);
     }
 
     function addContract(
@@ -161,21 +191,24 @@ contract Governance is IGovernance {
         return powerAccumulator >= thresholdVotingPower;
     }
 
-    function withdraw(
+     function withdraw(
         ValidatorSetArgs calldata _validators,
         Signature[] calldata _signatures,
-        address payable to
+        address[] calldata _tokens,
+        address payable _to
     ) external {
-        bytes32 messageHash = computeWithdrawHash(_validators, to);
+        bytes32 messageHash = computeWithdrawHash(_validators, _to, _tokens);
         require(
             authorize(_validators, _signatures, messageHash),
             "Unauthorized."
         );
 
+        lastWithdrawNonce = lastWithdrawNonce + 1;
+
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        bridge.withdraw(to);
+        bridge.withdraw(_tokens, _to);
     }
 
     function isValidSignature(
@@ -196,18 +229,21 @@ contract Governance is IGovernance {
     }
 
     function computeWithdrawHash(
-        ValidatorSetArgs calldata validatorSetArgs,
-        address payable addr
+        ValidatorSetArgs calldata _validatorSetArgs,
+        address payable _addr,
+        address[] calldata _tokens
     ) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     version,
                     "withdraw",
-                    validatorSetArgs.validators,
-                    validatorSetArgs.powers,
-                    validatorSetArgs.nonce,
-                    addr
+                    _validatorSetArgs.validators,
+                    _validatorSetArgs.powers,
+                    _validatorSetArgs.nonce,
+                    _addr,
+                    _tokens,
+                    lastWithdrawNonce
                 )
             );
     }

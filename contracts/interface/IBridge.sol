@@ -49,5 +49,8 @@ interface IBridge is ICommon {
         bytes32 message
     ) external view returns (bool);
 
-    function withdraw(address payable to) external;
+    function withdraw(
+        address[] calldata tokens,
+        address payable to
+    ) external;
 }
