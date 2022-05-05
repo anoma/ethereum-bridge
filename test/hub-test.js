@@ -9,7 +9,7 @@ describe("Hub", function () {
     const hub = await Hub.deploy();
     await hub.deployed();
 
-    expect(await hub.getContract("governance")).to.equal("0x0000000000000000000000000000000000000000");
+    expect(await hub.getContract("governance")).to.equal(ethers.constants.AddressZero);
 
     // invalid add contract not owner
     const addContractRejectNotOwner = hub.connect(addr1).addContract("governance", addr1.address);
@@ -45,4 +45,54 @@ describe("Hub", function () {
     // update governance address
     await hub.connect(addr1).upgradeContract("governance", addr4.address);
   });
+
+  it("Upgrade testing", async function () {
+    const [_owner, addr1] = await ethers.getSigners();
+
+    const Hub = await ethers.getContractFactory("Hub");
+    const hub = await Hub.deploy();
+    await hub.deployed();
+
+    expect(await hub.getContract("governance")).to.equal(ethers.constants.AddressZero);
+
+    // invalid upgrade not exist
+    const upgradeInvalidNotExist = hub.upgradeContract("governance", addr1.address);
+    await expect(upgradeInvalidNotExist).to.be.revertedWith("Invalid contract address.")
+
+    // valid add contract
+    await hub.addContract("governance", addr1.address);
+
+    // invalid upgrade zero address
+    const upgradeInvalidZeroAddress = hub.upgradeContract("governance", ethers.constants.AddressZero);
+    await expect(upgradeInvalidZeroAddress).to.be.revertedWith("Invalid address.")
+
+    // invalid upgrade same address
+    const upgradeInvalidSameAddress = hub.upgradeContract("governance", addr1.address);
+    await expect(upgradeInvalidSameAddress).to.be.revertedWith("Address must be different")
+  })
+
+  it("Add testing", async function () {
+    const [_owner, addr1, addr2] = await ethers.getSigners();
+
+    const Hub = await ethers.getContractFactory("Hub");
+    const hub = await Hub.deploy();
+    await hub.deployed();
+
+    expect(await hub.getContract("governance")).to.equal(ethers.constants.AddressZero);
+
+    // valid add contract
+    await hub.addContract("governance", addr1.address);
+
+    // invalid add contract already exist
+    const addContractInvalidAlreadyExist = hub.addContract("governance", addr2.address);
+    await expect(addContractInvalidAlreadyExist).to.be.revertedWith("Contract name already exist.")
+
+    // invalid add contract duplicate address
+    const addContractInvalidDuplicateAddress = hub.addContract("test", addr1.address);
+    await expect(addContractInvalidDuplicateAddress).to.be.revertedWith("Invalid duplicate address.")
+
+    // invalid add contract zero address
+    const addContractInvalidZeroAddress = hub.addContract("test", ethers.constants.AddressZero);
+    await expect(addContractInvalidZeroAddress).to.be.revertedWith("Invalid contract address.")
+  })
 });

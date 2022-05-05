@@ -66,7 +66,7 @@ describe("Governance", function () {
         await expect(governanceInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
     });
 
-    it("Update validator set testing", async function () {
+    it("updateValidatorSet testing", async function () {
         const newTotalValidators = 12;
         const newPowers = randomPowers(newTotalValidators);
         const newSigners = getSigners(newTotalValidators);
@@ -134,15 +134,14 @@ describe("Governance", function () {
         expect(await governance.lastValidatorSetNonce()).to.be.equal(2);
     });
 
-    it("Upgrade contract testing", async function () {
+    it("upgradeContract testing", async function () {
         const newContractAddress = ethers.Wallet.createRandom().address
         const contractName = "governance"
 
-        let abiEncoded = ethers.utils.solidityPack(
+        const messageHash = generateArbitraryHash(
             ["uint256", "string", "string", "address", ],
             [1, "upgradeContract", contractName, newContractAddress]
-        );
-        const messageHash = ethers.utils.keccak256(abiEncoded);
+        )
         
         const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
         const signatures = await generateSignatures(bridgeSigners, messageHash);
@@ -150,22 +149,78 @@ describe("Governance", function () {
 
         const newAddress = await hub.getContract(contractName);
         expect(newAddress).to.be.equal(newContractAddress);
+
+        // upgrade contract invalid zero address
+        const upgradeInvalidZeroAddress = governance.upgradeContract(currentValidatorSetArgs, signatures, contractName, ethers.constants.AddressZero)
+        await expect(upgradeInvalidZeroAddress).to.be.revertedWith("Invalid address.")
+
+        // upgrade contract invalid bridge
+        const upgradeInvalidContractName = governance.upgradeContract(currentValidatorSetArgs, signatures, "bridge", newContractAddress)
+        await expect(upgradeInvalidContractName).to.be.revertedWith("Invalid contract name.")
+
+        // upgrade contract invalid hash
+        const messageHashInvalid = generateArbitraryHash(
+            ["uint256", "string", "string", "address", ],
+            [1, "test", contractName, newContractAddress]
+        )
+        const signaturesInvalidHash = await generateSignatures(bridgeSigners, messageHashInvalid);
+        const upgradeInvalidHash = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidHash, contractName, newContractAddress)
+        await expect(upgradeInvalidHash).to.be.revertedWith("Invalid validator set signature.")
+
+        // upgrade contract invalid signatures
+        const signaturesInvalidSignatures = await generateSignatures(bridgeSigners, messageHash);
+        signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
+        const upgradeInvalidSignatures = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
+        await expect(upgradeInvalidSignatures).to.be.revertedWith("Invalid validator set signature.")
+
+        const newAddressCheck = await hub.getContract(contractName);
+        expect(newAddressCheck).to.be.equal(newContractAddress);
     });
 
-    it("Add contract testing", async function () {
+    it("addContract testing", async function () {
         const newContractAddress = ethers.Wallet.createRandom().address
         const contractName = "new"
 
-        const  messageHash = generateArbitraryHash(
+        const messageHash = generateArbitraryHash(
             ["uint256", "string", "string", "address"],
             [1, "addContract", contractName, newContractAddress]
         );
-        
+
         const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
         const signatures = await generateSignatures(bridgeSigners, messageHash);
+
+        // invalid add contract zero address
+        const addContractInvalidZeroAddress = governance.addContract(currentValidatorSetArgs, signatures, contractName, ethers.constants.AddressZero)
+        await expect(addContractInvalidZeroAddress).to.be.revertedWith("Invalid address.")
+
+        // invalid add contract invalid message ahsh
+        const messageHashInvalidMessageHash = generateArbitraryHash(
+            ["uint256", "string", "string", "address"],
+            [1, "test", contractName, newContractAddress]
+        );
+        const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalidMessageHash);
+        const addContractInvalidInvalidMessageHash = governance.addContract(currentValidatorSetArgs, signaturesInvalidMessageHash, contractName, newContractAddress)
+        await expect(addContractInvalidInvalidMessageHash).to.be.revertedWith("Invalid validator set signature.")
+
+        // invalid add contract invalid signatures
+        let signaturesInvalidSignatures = await generateSignatures(bridgeSigners, messageHash);
+        signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
+        signaturesInvalidSignatures[2].s = signaturesInvalidSignatures[0].s
+        signaturesInvalidSignatures[2].v = signaturesInvalidSignatures[0].v
+        const addContractInvalidInvalidSignatures = governance.addContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
+        await expect(addContractInvalidInvalidSignatures).to.be.revertedWith("Invalid validator set signature.")
+
+        const newAddressInvalid = await hub.getContract(contractName);
+        expect(newAddressInvalid).to.be.equal(ethers.constants.AddressZero);
+
+        // valid 
         await governance.addContract(currentValidatorSetArgs, signatures, contractName, newContractAddress)
 
-        const newAddress = await hub.getContract("new");
+        const newAddress = await hub.getContract(contractName);
         expect(newAddress).to.be.equal(newContractAddress);
     });
+
+    it("upgradeBridge testing", async function () {
+        
+    })
 })

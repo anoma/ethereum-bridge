@@ -6,6 +6,7 @@ require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-exposed');
 require('solidity-coverage')
+require('hardhat-contract-sizer');
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -27,6 +28,13 @@ module.exports = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: false,
+    strict: true,
+    only: [],
   },
   gasReporter: {
     enabled: (process.env.REPORT_GAS  === 'true'),

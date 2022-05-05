@@ -93,7 +93,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         require(
             _batchNonce > lastTransferToERC20Nonce &&
                 lastTransferToERC20Nonce + MAX_NONCE_INCREMENT > _batchNonce,
-            "Invalid Nonce"
+            "Invalid nonce."
         );
         require(
             _isValidSignatureSet(_validatorSetArgs, _signatures),

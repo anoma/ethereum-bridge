@@ -37,6 +37,7 @@ contract Hub is IHub {
     {
         address oldAddress = _getContract(_name);
         require(oldAddress != address(0), "Invalid contract address.");
+        require(_address != address(0), "Invalid address.");
         require(oldAddress != _address, "Address must be different.");
 
         _deleteExistContract(oldAddress);
@@ -53,8 +54,8 @@ contract Hub is IHub {
             _getContract(_name) == address(0),
             "Contract name already exist."
         );
-        require(!_getExistContract(_address), "Invalid duplicate address.");
         require(_address != address(0), "Invalid contract address.");
+        require(!_getExistContract(_address), "Invalid duplicate address.");
 
         _setContract(_name, _address);
         _setExistContract(_address);

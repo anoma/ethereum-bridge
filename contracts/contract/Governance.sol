@@ -6,7 +6,6 @@ import "../interface/IBridge.sol";
 import "../interface/IGovernance.sol";
 import "../interface/ICommon.sol";
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract Governance is IGovernance {
@@ -51,11 +50,11 @@ contract Governance is IGovernance {
         string calldata _name,
         address _address
     ) external {
-        require(_address != address(0), "Invalid address");
+        require(_address != address(0), "Invalid address.");
         require(
             keccak256(abi.encodePacked(_name)) != 
             keccak256(abi.encodePacked("bridge")), 
-        "Invalid contract name"
+        "Invalid contract name."
         );
 
         bytes32 messageHash = keccak256(
@@ -78,7 +77,7 @@ contract Governance is IGovernance {
         address[] calldata _tokens,
         address payable _address
     ) external {
-        require(_address != address(0), "Invalid address");
+        require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(
             abi.encodePacked(version, "upgradeContract", "bridge", _address)
         );
@@ -100,7 +99,7 @@ contract Governance is IGovernance {
         string calldata _name,
         address _address
     ) external {
-        require(_address != address(0), "Invalid address");
+        require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(
             abi.encodePacked(version, "addContract", _name, _address)
         );
