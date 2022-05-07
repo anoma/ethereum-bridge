@@ -15,11 +15,10 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
-    bytes32 public lastValidatorSetHash;
-    uint256 public lastValidatorSetNonce = 0;
+    bytes32 public validatorSetHash;
 
-    uint256 private lastTransferToERC20Nonce = 0;
-    uint256 private lastTransferToNamadaNonce = 0;
+    uint256 private transferToERC20Nonce = 0;
+    uint256 private transferToNamadaNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
     uint256 private constant MAX_UINT =
@@ -42,18 +41,23 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         version = _version;
         thresholdVotingPower = _thresholdVotingPower;
-        lastValidatorSetHash = computeValidatorSetHash(
+        validatorSetHash = computeValidatorSetHash(
             _validators,
             _powers,
-            lastValidatorSetNonce
+            0
         );
         hub = IHub(_hub);
+    }
 
-        emit ValidatorSetUpdate(
-            lastValidatorSetNonce,
-            _validators,
-            lastValidatorSetHash
-        );
+    function getValidatorSetHash() external view returns (bytes32) {
+        return validatorSetHash;
+    }
+
+    function setValidatorSetHash(bytes32 _validatorSetHash)
+        external
+        onlyLatestGovernanceContract
+    {
+        validatorSetHash = _validatorSetHash;
     }
 
     function authorize(
@@ -66,20 +70,16 @@ contract Bridge is IBridge, ReentrancyGuard {
             "Mismatch array length."
         );
         require(
-            computeValidatorSetHash(_validatorSetArgs) == lastValidatorSetHash,
+            computeValidatorSetHash(_validatorSetArgs) == validatorSetHash,
             "Invalid validatorSetHash."
         );
 
-        require(
+        return
             checkValidatorSetVotingPowerAndSignature(
                 _validatorSetArgs,
                 _signatures,
                 _message
-            ),
-            "Invalid validator set signature."
-        );
-
-        return true;
+            );
     }
 
     function transferToERC(
@@ -91,8 +91,8 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 _batchNonce
     ) external nonReentrant {
         require(
-            _batchNonce > lastTransferToERC20Nonce &&
-                lastTransferToERC20Nonce + MAX_NONCE_INCREMENT > _batchNonce,
+            _batchNonce > transferToERC20Nonce &&
+                transferToERC20Nonce + MAX_NONCE_INCREMENT > _batchNonce,
             "Invalid nonce."
         );
         require(
@@ -101,7 +101,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
 
         require(
-            computeValidatorSetHash(_validatorSetArgs) == lastValidatorSetHash,
+            computeValidatorSetHash(_validatorSetArgs) == validatorSetHash,
             "Invalid validatorSetHash."
         );
         require(
@@ -129,8 +129,8 @@ contract Bridge is IBridge, ReentrancyGuard {
             IERC20(_froms[i]).safeTransfer(_tos[i], _amounts[i]);
         }
 
-        lastTransferToERC20Nonce = _batchNonce;
-        emit TrasferToECR(lastTransferToERC20Nonce, _froms, _tos, _amounts);
+        transferToERC20Nonce = _batchNonce;
+        emit TrasferToECR(transferToERC20Nonce, _froms, _tos, _amounts);
     }
 
     function transferToNamada(
@@ -156,61 +156,8 @@ contract Bridge is IBridge, ReentrancyGuard {
             amounts[i] = postBalance - preBalance;
         }
 
-        lastTransferToNamadaNonce = lastTransferToNamadaNonce + 1;
-        emit TransferToNamada(lastTransferToNamadaNonce, _froms, amounts);
-    }
-
-    function updateValidatorSet(
-        ValidatorSetArgs calldata _currentValidatorSetArgs,
-        ValidatorSetArgs calldata _newValidatorSetArgs,
-        Signature[] calldata _signatures
-    ) external {
-        require(
-            _newValidatorSetArgs.nonce > _currentValidatorSetArgs.nonce &&
-                _newValidatorSetArgs.nonce <
-                _currentValidatorSetArgs.nonce + MAX_NONCE_INCREMENT,
-            "Invalid validatorSetNonce"
-        );
-        require(
-            _isValidSignatureSet(_currentValidatorSetArgs, _signatures) &&
-                _isValidValidatorSetArg(_newValidatorSetArgs),
-            "Mismatch array length."
-        );
-        require(
-            computeValidatorSetHash(_currentValidatorSetArgs) ==
-                lastValidatorSetHash,
-            "Invalid validatorSetHash."
-        );
-
-        require(
-            _isEnoughVotingPower(
-                _newValidatorSetArgs.powers,
-                thresholdVotingPower
-            ),
-            "Not enough voting power."
-        );
-
-        bytes32 newValidatorSetHash = computeValidatorSetHash(
-            _newValidatorSetArgs
-        );
-
-        require(
-            checkValidatorSetVotingPowerAndSignature(
-                _currentValidatorSetArgs,
-                _signatures,
-                newValidatorSetHash
-            ),
-            "Invalid validator set signature."
-        );
-
-        lastValidatorSetHash = newValidatorSetHash;
-        lastValidatorSetNonce = _newValidatorSetArgs.nonce;
-
-        emit ValidatorSetUpdate(
-            lastValidatorSetNonce,
-            _newValidatorSetArgs.validators,
-            newValidatorSetHash
-        );
+        transferToNamadaNonce = transferToNamadaNonce + 1;
+        emit TransferToNamada(transferToNamadaNonce, _froms, amounts);
     }
 
     function withdraw(address[] calldata _tokens, address payable _to)
@@ -280,7 +227,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             keccak256(
                 abi.encodePacked(
                     version,
-                    "bridge",
+                    "bridgeValidatorSet",
                     validatorSetArgs.validators,
                     validatorSetArgs.powers,
                     validatorSetArgs.nonce
@@ -296,7 +243,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     ) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(version, "bridge", validators, powers, nonce)
+                abi.encodePacked(version, "bridgeValidatorSet", validators, powers, nonce)
             );
     }
 
@@ -315,7 +262,7 @@ contract Bridge is IBridge, ReentrancyGuard {
                     _tos,
                     _amounts,
                     _batchNonce,
-                    lastValidatorSetHash
+                    validatorSetHash
                 )
             );
     }

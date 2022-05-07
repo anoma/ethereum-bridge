@@ -60,8 +60,10 @@ const generateArbitraryHash = (field, data) => {
     return ethers.utils.keccak256(abiEncoded);
 }
 
-const generateValidatorSetHash = (validatorAddreseses, powers, nonce, namespace) => {
-    return generateArbitraryHash(["uint256", "string", "address[]", "uint256[]", "uint256"], [1, namespace, validatorAddreseses, powers, nonce])
+const generateValidatorSetHash = (bridgeValidatorAddreseses, bridgePowers, governanceValidatorAddreseses, governancePowers, nonce) => {
+    const bridgeHash = generateArbitraryHash(["uint256", "string", "address[]", "uint256[]", "uint256"], [1, "bridgeValidatorSet", bridgeValidatorAddreseses, bridgePowers, nonce])
+    const governanceHash = generateArbitraryHash(["uint256", "string", "address[]", "uint256[]", "uint256"], [1, "governanceValidatorSet", governanceValidatorAddreseses, governancePowers, nonce])
+    return [bridgeHash, governanceHash, generateArbitraryHash(["bytes32", "bytes32"], [bridgeHash, governanceHash])]
 }
 
 const generateBatchTransferHash = (froms, tos, amounts, nonce, validatorSetHash, namespace) => {
