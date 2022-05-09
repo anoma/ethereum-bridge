@@ -79,7 +79,7 @@ contract Governance is IGovernance {
     ) external {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(
-            abi.encodePacked(version, "upgradeContract", "bridge", _address)
+            abi.encodePacked(version, "upgradeBridgeContract", "bridge", _address)
         );
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
@@ -157,17 +157,12 @@ contract Governance is IGovernance {
         bytes32 _messageHash
     ) private view returns (bool) {
         require(
-            _validators.nonce > lastValidatorSetNonce &&
-                lastValidatorSetNonce + MAX_NONCE_INCREMENT < _validators.nonce,
-            "Invalid nonce."
-        );
-        require(
             _validators.validators.length == _validators.powers.length,
             "Malformed input."
         );
         require(
             computeValidatorSetHash(_validators) == lastValidatorSetHash,
-            "Invalid validatorSetHash"
+            "Invalid validatorSetHash."
         );
 
         uint256 powerAccumulator = 0;
@@ -196,6 +191,8 @@ contract Governance is IGovernance {
         address[] calldata _tokens,
         address payable _to
     ) external {
+        require(_to != address(0), "Invalid address.");
+
         bytes32 messageHash = computeWithdrawHash(_validators, _to, _tokens);
         require(
             authorize(_validators, _signatures, messageHash),

@@ -70,16 +70,12 @@ contract Bridge is IBridge, ReentrancyGuard {
             "Invalid validatorSetHash."
         );
 
-        require(
+        return
             checkValidatorSetVotingPowerAndSignature(
                 _validatorSetArgs,
                 _signatures,
                 _message
-            ),
-            "Invalid validator set signature."
-        );
-
-        return true;
+            );
     }
 
     function transferToERC(

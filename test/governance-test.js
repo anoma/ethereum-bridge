@@ -119,7 +119,7 @@ describe("Governance", function () {
 
 
         const governanceInvalidBadAuth = governance.updateGovernanceSet(currentValidatorSetArgs, newValidatorSetArgsBadAuth, signaturesBadAuth)
-        await expect(governanceInvalidBadAuth).to.be.revertedWith("Invalid validator set signature.")
+        await expect(governanceInvalidBadAuth).to.be.revertedWith("Unauthorized.")
         expect(await governance.lastValidatorSetHash()).to.be.equal(newValidatorSetHash)
         expect(await governance.lastValidatorSetNonce()).to.be.equal(1)
 
@@ -165,13 +165,13 @@ describe("Governance", function () {
         )
         const signaturesInvalidHash = await generateSignatures(bridgeSigners, messageHashInvalid);
         const upgradeInvalidHash = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidHash, contractName, newContractAddress)
-        await expect(upgradeInvalidHash).to.be.revertedWith("Invalid validator set signature.")
+        await expect(upgradeInvalidHash).to.be.revertedWith("Unauthorized.")
 
         // upgrade contract invalid signatures
         const signaturesInvalidSignatures = await generateSignatures(bridgeSigners, messageHash);
         signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
         const upgradeInvalidSignatures = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
-        await expect(upgradeInvalidSignatures).to.be.revertedWith("Invalid validator set signature.")
+        await expect(upgradeInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
         const newAddressCheck = await hub.getContract(contractName);
         expect(newAddressCheck).to.be.equal(newContractAddress);
@@ -200,7 +200,7 @@ describe("Governance", function () {
         );
         const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalidMessageHash);
         const addContractInvalidInvalidMessageHash = governance.addContract(currentValidatorSetArgs, signaturesInvalidMessageHash, contractName, newContractAddress)
-        await expect(addContractInvalidInvalidMessageHash).to.be.revertedWith("Invalid validator set signature.")
+        await expect(addContractInvalidInvalidMessageHash).to.be.revertedWith("Unauthorized.")
 
         // invalid add contract invalid signatures
         let signaturesInvalidSignatures = await generateSignatures(bridgeSigners, messageHash);
@@ -208,7 +208,7 @@ describe("Governance", function () {
         signaturesInvalidSignatures[2].s = signaturesInvalidSignatures[0].s
         signaturesInvalidSignatures[2].v = signaturesInvalidSignatures[0].v
         const addContractInvalidInvalidSignatures = governance.addContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
-        await expect(addContractInvalidInvalidSignatures).to.be.revertedWith("Invalid validator set signature.")
+        await expect(addContractInvalidInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
         const newAddressInvalid = await hub.getContract(contractName);
         expect(newAddressInvalid).to.be.equal(ethers.constants.AddressZero);
@@ -221,6 +221,117 @@ describe("Governance", function () {
     });
 
     it("upgradeBridge testing", async function () {
+        const maxTokenSupply = 100000000;
+        const Token = await ethers.getContractFactory("Token");
+
+        const tokenOne = await Token.deploy("TokenOne", "TKN1", maxTokenSupply, bridge.address);
+        const tokenTwo = await Token.deploy("TokenTwo", "TKN2", maxTokenSupply, bridge.address);
+        await tokenOne.deployed();
+        await tokenTwo.deployed();
+
+        const newContractAddress = ethers.Wallet.createRandom().address
+        const contractName = "bridge"
+
+        const messageHash = generateArbitraryHash(
+            ["uint256", "string", "string", "address"],
+            [1, "upgradeBridgeContract", contractName, newContractAddress]
+        )
+    
+        const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
+        const signatures = await generateSignatures(bridgeSigners, messageHash);
+
+        // invalid bridge upgrade zero address
+        const bridgeUpgradeInvalidZeroAddress = governance.upgradeBridgeContract(currentValidatorSetArgs, signatures, [tokenOne.address, tokenTwo.address],  ethers.constants.AddressZero)
+        await expect(bridgeUpgradeInvalidZeroAddress).to.be.revertedWith("Invalid address.")
+
+        // invalid bridge upgrade bad message hash
+        const messageHashInvalid = generateArbitraryHash(
+            ["uint256", "string", "string", "address" ],
+            [1, "upgradeBridgeContractInvalid", contractName, newContractAddress]
+        )
+        const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalid);
+        const bridgeUpgradeInvalidMessageHash = governance.upgradeBridgeContract(currentValidatorSetArgs, signaturesInvalidMessageHash, [tokenOne.address, tokenTwo.address], newContractAddress)
+        await expect(bridgeUpgradeInvalidMessageHash).to.be.revertedWith("Unauthorized.")
+
+        // invalid bridge upgrade bad signatures
+        const signaturesInvalid = await generateSignatures(bridgeSigners, messageHash);
+        signaturesInvalid[3].r = signaturesInvalid[0].r
+        signaturesInvalid[3].s = signaturesInvalid[0].s
+        signaturesInvalid[3].v = signaturesInvalid[0].v
+        const bridgeUpgradeInvalidSignatures = governance.upgradeBridgeContract(currentValidatorSetArgs, signaturesInvalid, [tokenOne.address, tokenTwo.address], newContractAddress)
+        await expect(bridgeUpgradeInvalidSignatures).to.be.revertedWith("Unauthorized.")
         
+        // valid upgrade bridge
+        await governance.upgradeBridgeContract(currentValidatorSetArgs, signatures, [tokenOne.address, tokenTwo.address], newContractAddress)
+        
+        const balanceTokenOne = await tokenOne.balanceOf(newContractAddress);
+        const balanceTokenTwo = await tokenTwo.balanceOf(newContractAddress);
+        expect(balanceTokenOne).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+        expect(balanceTokenTwo).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+    })
+
+    it("withdraw testing", async function () {
+        const maxTokenSupply = 100000000;
+        const Token = await ethers.getContractFactory("Token");
+
+        const tokenOne = await Token.deploy("TokenOne", "TKN1", maxTokenSupply, bridge.address);
+        const tokenTwo = await Token.deploy("TokenTwo", "TKN2", maxTokenSupply, bridge.address);
+        await tokenOne.deployed();
+        await tokenTwo.deployed();
+
+        const balanceTokenOne = await tokenOne.balanceOf(bridge.address);
+        const balanceTokenTwo = await tokenTwo.balanceOf(bridge.address);
+        expect(balanceTokenOne).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+        expect(balanceTokenTwo).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+
+        const newContractAddress = ethers.Wallet.createRandom().address
+
+        const currentValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 0)
+        const messageHash = generateArbitraryHash(
+            ["uint256", "string", "address[]", "uint256[]", "uint256", "address", "address[]", "uint256"],
+            [1, "withdraw", currentValidatorSetArgs.validators, currentValidatorSetArgs.powers, currentValidatorSetArgs.nonce, newContractAddress, [tokenOne.address, tokenTwo.address], 0]
+        )
+        const signatures = await generateSignatures(governanceSigners, messageHash)
+
+        // withdraw invalid address
+        const withdrawInvalidAddress = governance.withdraw(currentValidatorSetArgs, signatures, [tokenOne.address, tokenTwo.address], ethers.constants.AddressZero)
+        await expect(withdrawInvalidAddress).to.be.revertedWith("Invalid address.")
+        
+        // withdraw invalid message hash
+        const messageHashInvalid = generateArbitraryHash(
+            ["uint256", "string", "address[]", "uint256[]", "uint256", "address", "address[]", "uint256"],
+            [1, "withdrawInvalid", currentValidatorSetArgs.validators, currentValidatorSetArgs.powers, currentValidatorSetArgs.nonce, newContractAddress, [tokenOne.address, tokenTwo.address], 0]
+        )
+        const signaturesInvalidMessageHash = await generateSignatures(governanceSigners, messageHashInvalid)
+        const withdrawInvalidMessageHash = governance.withdraw(currentValidatorSetArgs, signaturesInvalidMessageHash, [tokenOne.address, tokenTwo.address], newContractAddress)
+        await expect(withdrawInvalidMessageHash).to.be.revertedWith("Unauthorized.")
+
+        // withdraw invalid signatures
+        const signaturesInvalid = await generateSignatures(governanceSigners, messageHash)
+        signaturesInvalid[3].r = signaturesInvalid[0].r
+        signaturesInvalid[3].s = signaturesInvalid[0].s
+        signaturesInvalid[3].v = signaturesInvalid[0].v
+
+        const withdrawInvalidSignatures = governance.withdraw(currentValidatorSetArgs, signaturesInvalid, [tokenOne.address, tokenTwo.address], newContractAddress)
+        await expect(withdrawInvalidSignatures).to.be.revertedWith("Unauthorized.")
+
+        // withdraw invalid validator set
+        const invalidValidatorSetargs = JSON.parse(JSON.stringify(currentValidatorSetArgs));
+        invalidValidatorSetargs.nonce = 5;
+        const withdrawInvalidValidatorSet = governance.withdraw(invalidValidatorSetargs, signaturesInvalid, [tokenOne.address, tokenTwo.address], newContractAddress)
+        await expect(withdrawInvalidValidatorSet).to.be.revertedWith("Invalid validatorSetHash.")
+
+        const invalidValidatorSetargs2 = JSON.parse(JSON.stringify(currentValidatorSetArgs));
+        invalidValidatorSetargs2.validators.pop()
+        const withdrawInvalidValidatorSet2 = governance.withdraw(invalidValidatorSetargs2, signaturesInvalid, [tokenOne.address, tokenTwo.address], newContractAddress)
+        await expect(withdrawInvalidValidatorSet2).to.be.revertedWith("Malformed input.")
+
+        // valid withdraw
+        await governance.withdraw(currentValidatorSetArgs, signatures, [tokenOne.address, tokenTwo.address], newContractAddress)
+        
+        const balanceTokenOneAfter = await tokenOne.balanceOf(newContractAddress);
+        const balanceTokenTwoAfter = await tokenTwo.balanceOf(newContractAddress);
+        expect(balanceTokenOneAfter).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+        expect(balanceTokenTwoAfter).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
     })
 })

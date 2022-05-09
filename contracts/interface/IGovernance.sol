@@ -20,6 +20,13 @@ interface IGovernance is ICommon {
         address addr
     ) external;
 
+    function upgradeBridgeContract(
+        ValidatorSetArgs calldata _validators,
+        Signature[] calldata _signatures,
+        address[] calldata _tokens,
+        address payable _address
+    ) external;
+
     function addContract(
         ValidatorSetArgs calldata validators,
         Signature[] calldata signatures,

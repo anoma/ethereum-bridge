@@ -180,8 +180,8 @@ describe("Bridge", function () {
         signaturesBadSignature[2].s = signaturesBadSignature[0].s
         signaturesBadSignature[2].v = signaturesBadSignature[0].v
 
-        const resultInvalid = bridge.authorize(currentValidatorSetArgs, signaturesBadSignature, messageHash)
-        await expect(resultInvalid).to.be.revertedWith("Invalid validator set signature.")
+        const resultInvalid = await bridge.authorize(currentValidatorSetArgs, signaturesBadSignature, messageHash)
+        expect(resultInvalid).to.be.equal(false)
 
         // invalid array length
         const resultInvalidMismatchLength = bridge.authorize(currentValidatorSetArgs, [signatures[0]], messageHash)
