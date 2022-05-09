@@ -47,7 +47,7 @@ const generateValidatorSetArgs = (validatorAddreseses, powers, nonce) => {
 
 const generateSignatures = async (signers, message) => {
     const signatures = await Promise.all(signers.map(async signer => {
-        const _message = (ethers.utils.arrayify(message))
+        const _message = ethers.utils.arrayify(message)
         const signature = await signer.signMessage(_message)
         const splitSig = ethers.utils.splitSignature(signature);
         return { r: splitSig.r, s: splitSig.s, v: splitSig.v }
