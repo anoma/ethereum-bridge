@@ -5,11 +5,7 @@ import "../interface/IHub.sol";
 import "../interface/ICommon.sol";
 
 interface IGovernance is ICommon {
-    event ValidatorSetUpdate(
-        uint256 indexed validatorSetNonce,
-        address[] validators,
-        bytes32 validateSetHash
-    );
+    event ValidatorSetUpdate(uint256 indexed validatorSetNonce, address[] validators, bytes32 validateSetHash);
     event NewContract(string indexed name, address addr);
     event UpgradedContract(string indexed name, address addr);
 
@@ -18,6 +14,13 @@ interface IGovernance is ICommon {
         Signature[] calldata signatures,
         string calldata name,
         address addr
+    ) external;
+
+    function upgradeBridgeContract(
+        ValidatorSetArgs calldata _validators,
+        Signature[] calldata _signatures,
+        address[] calldata _tokens,
+        address payable _address
     ) external;
 
     function addContract(

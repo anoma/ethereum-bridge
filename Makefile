@@ -4,6 +4,13 @@ check:
 size:
 	VIAIR=true npx hardhat check
 
+lint:
+	npx solhint 'contracts/**/*.sol'
+	npx prettier --check 'contracts/**/*.sol'
+
+lint-fix:
+	npx prettier --write 'contracts/**/*.sol'
+
 build-prod:
 	npx hardhat clean
 	RUNS=10000 VIAIR=true npx hardhat compile --force
@@ -25,7 +32,7 @@ test-gas:
 test-coverage:
 	VIAIR=false REPORT_GAS=false npx hardhat coverage
 
-dev-deps:
-	npm install
+deps:
+	npm ci
 
-.PHONY: build build-prod clean test test-gas test-coverage
+.PHONY: build build-prod clean test test-gas test-coverage lint lint-fix deps build-size check size

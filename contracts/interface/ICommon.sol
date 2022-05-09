@@ -2,11 +2,10 @@
 pragma solidity ^0.8.13;
 
 interface ICommon {
-
     struct ValidatorSetArgs {
         address[] validators;
-        uint[] powers;
-        uint nonce;
+        uint256[] powers;
+        uint256 nonce;
     }
 
     struct Signature {
@@ -14,5 +13,4 @@ interface ICommon {
         bytes32 s;
         uint8 v;
     }
-
 }

@@ -1,0 +1,71 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 12.x
+      - uses: actions/cache@v3
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: npm-v1-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-v1-
+      - run: make deps
+        if: steps.cache.outputs.cache-hit != 'true'
+      - run: make lint
+      - run: make test
+      - run: make test-gas
+        env:
+          COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 12.x
+      - uses: actions/cache@v3
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: npm-v1-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-v1-
+      - run: make deps
+        if: steps.cache.outputs.cache-hit != 'true'
+      - run: make test-coverage
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+      - uses: codecov/codecov-action@v3
+  
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 12.x
+      - uses: actions/cache@v3
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: npm-v1-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-v1-
+      - run: make deps
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Clean project         
+        run: make clean
+      - uses: crytic/slither-action@v0.1.1

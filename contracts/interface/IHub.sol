@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 interface IHub {
-
     function upgradeContract(string memory name, address addr) external;
-    function addContract(string memory name, address addr) external;
-    function getContract(string memory name) external view returns(address);
 
+    function addContract(string memory name, address addr) external;
+
+    function getContract(string memory name) external view returns (address);
 }
