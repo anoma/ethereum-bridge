@@ -85,8 +85,8 @@ describe("Governance", function () {
         const signatures = await generateSignatures(bridgeSigners, newValidatorSetHash);
 
         await governance.updateGovernanceSet(currentValidatorSetArgs, newValidatorSetArgs, signatures)
-        expect(await governance.lastValidatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await governance.lastValidatorSetNonce()).to.be.equal(1);
+        expect(await governance.validatorSetHash()).to.be.equal(newValidatorSetHash);
+        expect(await governance.validatorSetNonce()).to.be.equal(1);
 
         // invalid update governance set bad nonce (too little)
         const newValidatorSetArgsBadNonce = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
@@ -95,8 +95,8 @@ describe("Governance", function () {
 
         const governanceInvalidBadNonce = governance.updateGovernanceSet(currentValidatorSetArgs, newValidatorSetArgsBadNonce, signaturesBadNonce)
         await expect(governanceInvalidBadNonce).to.be.revertedWith("Invalid nonce.")
-        expect(await governance.lastValidatorSetHash()).to.be.equal(newValidatorSetHash)
-        expect(await governance.lastValidatorSetNonce()).to.be.equal(1)
+        expect(await governance.validatorSetHash()).to.be.equal(newValidatorSetHash)
+        expect(await governance.validatorSetNonce()).to.be.equal(1)
 
         // invalid update governance set bad nonce (too big)
         const newValidatorSetArgsBadNonceTwo = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 10003)
@@ -105,8 +105,8 @@ describe("Governance", function () {
 
         const governanceInvalidBadNonceTwo = governance.updateGovernanceSet(currentValidatorSetArgs, newValidatorSetArgsBadNonceTwo, signaturesBadNonceTwo)
         await expect(governanceInvalidBadNonceTwo).to.be.revertedWith("Invalid nonce.")
-        expect(await governance.lastValidatorSetHash()).to.be.equal(newValidatorSetHash)
-        expect(await governance.lastValidatorSetNonce()).to.be.equal(1)
+        expect(await governance.validatorSetHash()).to.be.equal(newValidatorSetHash)
+        expect(await governance.validatorSetNonce()).to.be.equal(1)
 
         // invalid update governance unauthorized 
         const newValidatorSetArgsBadAuth = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 5)
@@ -120,8 +120,8 @@ describe("Governance", function () {
 
         const governanceInvalidBadAuth = governance.updateGovernanceSet(currentValidatorSetArgs, newValidatorSetArgsBadAuth, signaturesBadAuth)
         await expect(governanceInvalidBadAuth).to.be.revertedWith("Unauthorized.")
-        expect(await governance.lastValidatorSetHash()).to.be.equal(newValidatorSetHash)
-        expect(await governance.lastValidatorSetNonce()).to.be.equal(1)
+        expect(await governance.validatorSetHash()).to.be.equal(newValidatorSetHash)
+        expect(await governance.validatorSetNonce()).to.be.equal(1)
 
         // valid update governance set
         const currentValidatorSetArgsValid = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
@@ -130,8 +130,8 @@ describe("Governance", function () {
         const signaturesValid = await generateSignatures(bridgeSigners, newValidatorSetHashValid);
 
         await governance.updateGovernanceSet(currentValidatorSetArgsValid, newValidatorSetArgsValid, signaturesValid)
-        expect(await governance.lastValidatorSetHash()).to.be.equal(newValidatorSetHashValid);
-        expect(await governance.lastValidatorSetNonce()).to.be.equal(2);
+        expect(await governance.validatorSetHash()).to.be.equal(newValidatorSetHashValid);
+        expect(await governance.validatorSetNonce()).to.be.equal(2);
     });
 
     it("upgradeContract testing", async function () {
@@ -328,7 +328,9 @@ describe("Governance", function () {
 
         // valid withdraw
         await governance.withdraw(currentValidatorSetArgs, signatures, [tokenOne.address, tokenTwo.address], newContractAddress)
-        
+        const withdrawNonce = await governance.withdrawNonce();
+        expect(withdrawNonce).to.be.equal(1)
+
         const balanceTokenOneAfter = await tokenOne.balanceOf(newContractAddress);
         const balanceTokenTwoAfter = await tokenTwo.balanceOf(newContractAddress);
         expect(balanceTokenOneAfter).to.be.equal(ethers.BigNumber.from(maxTokenSupply))

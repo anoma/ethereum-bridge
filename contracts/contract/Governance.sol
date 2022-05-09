@@ -12,10 +12,10 @@ contract Governance is IGovernance {
     uint256 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
-    bytes32 public lastValidatorSetHash;
-    uint256 public lastValidatorSetNonce = 0;
+    bytes32 public validatorSetHash;
+    uint256 public validatorSetNonce = 0;
 
-    uint256 private lastWithdrawNonce = 0;
+    uint256 public withdrawNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
@@ -32,7 +32,7 @@ contract Governance is IGovernance {
         require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
 
         version = _version;
-        lastValidatorSetHash = computeValidatorSetHash(_validators, _powers, lastValidatorSetNonce);
+        validatorSetHash = computeValidatorSetHash(_validators, _powers, validatorSetNonce);
         thresholdVotingPower = _thresholdVotingPower;
         hub = IHub(_hub);
     }
@@ -95,8 +95,8 @@ contract Governance is IGovernance {
         Signature[] calldata _signatures
     ) external {
         require(
-            lastValidatorSetNonce < _newValidatorSetArgs.nonce &&
-                lastValidatorSetNonce + MAX_NONCE_INCREMENT > _newValidatorSetArgs.nonce,
+            validatorSetNonce < _newValidatorSetArgs.nonce &&
+                validatorSetNonce + MAX_NONCE_INCREMENT > _newValidatorSetArgs.nonce,
             "Invalid nonce."
         );
 
@@ -106,10 +106,10 @@ contract Governance is IGovernance {
         bytes32 newValidatorSetHash = computeValidatorSetHash(_newValidatorSetArgs);
         require(bridge.authorize(_currentValidatorSetArgs, _signatures, newValidatorSetHash), "Unauthorized.");
 
-        lastValidatorSetHash = newValidatorSetHash;
-        lastValidatorSetNonce = _newValidatorSetArgs.nonce;
+        validatorSetHash = newValidatorSetHash;
+        validatorSetNonce = _newValidatorSetArgs.nonce;
 
-        emit ValidatorSetUpdate(lastValidatorSetNonce, _newValidatorSetArgs.validators, newValidatorSetHash);
+        emit ValidatorSetUpdate(validatorSetNonce, _newValidatorSetArgs.validators, newValidatorSetHash);
     }
 
     function authorize(
@@ -118,7 +118,7 @@ contract Governance is IGovernance {
         bytes32 _messageHash
     ) private view returns (bool) {
         require(_validators.validators.length == _validators.powers.length, "Malformed input.");
-        require(computeValidatorSetHash(_validators) == lastValidatorSetHash, "Invalid validatorSetHash.");
+        require(computeValidatorSetHash(_validators) == validatorSetHash, "Invalid validatorSetHash.");
 
         uint256 powerAccumulator = 0;
         for (uint256 i = 0; i < _validators.powers.length; i++) {
@@ -145,7 +145,7 @@ contract Governance is IGovernance {
         bytes32 messageHash = computeWithdrawHash(_validators, _to, _tokens);
         require(authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
-        lastWithdrawNonce = lastWithdrawNonce + 1;
+        withdrawNonce = withdrawNonce + 1;
 
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
@@ -183,7 +183,7 @@ contract Governance is IGovernance {
                     _validatorSetArgs.nonce,
                     _addr,
                     _tokens,
-                    lastWithdrawNonce
+                    withdrawNonce
                 )
             );
     }
