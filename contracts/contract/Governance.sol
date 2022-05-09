@@ -29,17 +29,10 @@ contract Governance is IGovernance {
         IHub _hub
     ) {
         require(_validators.length == _powers.length, "Mismatch array length.");
-        require(
-            _isEnoughVotingPower(_powers, _thresholdVotingPower),
-            "Invalid voting power threshold."
-        );
+        require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
 
         version = _version;
-        lastValidatorSetHash = computeValidatorSetHash(
-            _validators,
-            _powers,
-            lastValidatorSetNonce
-        );
+        lastValidatorSetHash = computeValidatorSetHash(_validators, _powers, lastValidatorSetNonce);
         thresholdVotingPower = _thresholdVotingPower;
         hub = IHub(_hub);
     }
@@ -51,22 +44,13 @@ contract Governance is IGovernance {
         address _address
     ) external {
         require(_address != address(0), "Invalid address.");
-        require(
-            keccak256(abi.encodePacked(_name)) != 
-            keccak256(abi.encodePacked("bridge")), 
-        "Invalid contract name."
-        );
+        require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked("bridge")), "Invalid contract name.");
 
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(version, "upgradeContract", _name, _address)
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeContract", _name, _address));
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        require(
-            bridge.authorize(_validators, _signatures, messageHash),
-            "Unauthorized."
-        );
+        require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         hub.upgradeContract(_name, _address);
     }
@@ -78,16 +62,11 @@ contract Governance is IGovernance {
         address payable _address
     ) external {
         require(_address != address(0), "Invalid address.");
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(version, "upgradeBridgeContract", "bridge", _address)
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeBridgeContract", "bridge", _address));
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        require(
-            bridge.authorize(_validators, _signatures, messageHash),
-            "Unauthorized."
-        );
+        require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         hub.upgradeContract("bridge", _address);
         bridge.withdraw(_tokens, _address);
@@ -100,17 +79,12 @@ contract Governance is IGovernance {
         address _address
     ) external {
         require(_address != address(0), "Invalid address.");
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(version, "addContract", _name, _address)
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(version, "addContract", _name, _address));
 
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        require(
-            bridge.authorize(_validators, _signatures, messageHash),
-            "Unauthorized."
-        );
+        require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         hub.addContract(_name, _address);
     }
@@ -129,26 +103,13 @@ contract Governance is IGovernance {
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        bytes32 newValidatorSetHash = computeValidatorSetHash(
-            _newValidatorSetArgs
-        );
-        require(
-            bridge.authorize(
-                _currentValidatorSetArgs,
-                _signatures,
-                newValidatorSetHash
-            ),
-            "Unauthorized."
-        );
+        bytes32 newValidatorSetHash = computeValidatorSetHash(_newValidatorSetArgs);
+        require(bridge.authorize(_currentValidatorSetArgs, _signatures, newValidatorSetHash), "Unauthorized.");
 
         lastValidatorSetHash = newValidatorSetHash;
         lastValidatorSetNonce = _newValidatorSetArgs.nonce;
 
-        emit ValidatorSetUpdate(
-            lastValidatorSetNonce,
-            _newValidatorSetArgs.validators,
-            newValidatorSetHash
-        );
+        emit ValidatorSetUpdate(lastValidatorSetNonce, _newValidatorSetArgs.validators, newValidatorSetHash);
     }
 
     function authorize(
@@ -156,24 +117,12 @@ contract Governance is IGovernance {
         Signature[] calldata _signatures,
         bytes32 _messageHash
     ) private view returns (bool) {
-        require(
-            _validators.validators.length == _validators.powers.length,
-            "Malformed input."
-        );
-        require(
-            computeValidatorSetHash(_validators) == lastValidatorSetHash,
-            "Invalid validatorSetHash."
-        );
+        require(_validators.validators.length == _validators.powers.length, "Malformed input.");
+        require(computeValidatorSetHash(_validators) == lastValidatorSetHash, "Invalid validatorSetHash.");
 
         uint256 powerAccumulator = 0;
         for (uint256 i = 0; i < _validators.powers.length; i++) {
-            if (
-                !isValidSignature(
-                    _validators.validators[i],
-                    _messageHash,
-                    _signatures[i]
-                )
-            ) {
+            if (!isValidSignature(_validators.validators[i], _messageHash, _signatures[i])) {
                 return false;
             }
 
@@ -185,7 +134,7 @@ contract Governance is IGovernance {
         return powerAccumulator >= thresholdVotingPower;
     }
 
-     function withdraw(
+    function withdraw(
         ValidatorSetArgs calldata _validators,
         Signature[] calldata _signatures,
         address[] calldata _tokens,
@@ -194,10 +143,7 @@ contract Governance is IGovernance {
         require(_to != address(0), "Invalid address.");
 
         bytes32 messageHash = computeWithdrawHash(_validators, _to, _tokens);
-        require(
-            authorize(_validators, _signatures, messageHash),
-            "Unauthorized."
-        );
+        require(authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         lastWithdrawNonce = lastWithdrawNonce + 1;
 
@@ -212,9 +158,7 @@ contract Governance is IGovernance {
         bytes32 _messageHash,
         Signature calldata _signature
     ) internal pure returns (bool) {
-        bytes32 messageDigest = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash)
-        );
+        bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
         (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
             messageDigest,
             _signature.v,
@@ -244,11 +188,7 @@ contract Governance is IGovernance {
             );
     }
 
-    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs)
-        internal
-        view
-        returns (bytes32)
-    {
+    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
@@ -266,22 +206,14 @@ contract Governance is IGovernance {
         uint256[] memory powers,
         uint256 nonce
     ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    version,
-                    "governance",
-                    validators,
-                    powers,
-                    nonce
-                )
-            );
+        return keccak256(abi.encodePacked(version, "governance", validators, powers, nonce));
     }
 
-    function _isEnoughVotingPower(
-        uint256[] memory _powers,
-        uint256 _thresholdVotingPower
-    ) internal pure returns (bool) {
+    function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
+        internal
+        pure
+        returns (bool)
+    {
         uint256 powerAccumulator = 0;
 
         for (uint256 i = 0; i < _powers.length; i++) {

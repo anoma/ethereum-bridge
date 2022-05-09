@@ -5,11 +5,7 @@ import "../interface/IHub.sol";
 import "../interface/ICommon.sol";
 
 interface IGovernance is ICommon {
-    event ValidatorSetUpdate(
-        uint256 indexed validatorSetNonce,
-        address[] validators,
-        bytes32 validateSetHash
-    );
+    event ValidatorSetUpdate(uint256 indexed validatorSetNonce, address[] validators, bytes32 validateSetHash);
     event NewContract(string indexed name, address addr);
     event UpgradedContract(string indexed name, address addr);
 

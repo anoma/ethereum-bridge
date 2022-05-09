@@ -30,11 +30,7 @@ contract Hub is IHub {
         initialiazed = true;
     }
 
-    function upgradeContract(string calldata _name, address _address)
-        external
-        override
-        onlyLatestGovernanceContract
-    {
+    function upgradeContract(string calldata _name, address _address) external override onlyLatestGovernanceContract {
         address oldAddress = _getContract(_name);
         require(oldAddress != address(0), "Invalid contract address.");
         require(_address != address(0), "Invalid address.");
@@ -45,15 +41,8 @@ contract Hub is IHub {
         _setContract(_name, _address);
     }
 
-    function addContract(string calldata _name, address _address)
-        external
-        override
-        onlyLatestGovernanceContract
-    {
-        require(
-            _getContract(_name) == address(0),
-            "Contract name already exist."
-        );
+    function addContract(string calldata _name, address _address) external override onlyLatestGovernanceContract {
+        require(_getContract(_name) == address(0), "Contract name already exist.");
         require(_address != address(0), "Invalid contract address.");
         require(!_getExistContract(_address), "Invalid duplicate address.");
 
@@ -61,12 +50,7 @@ contract Hub is IHub {
         _setExistContract(_address);
     }
 
-    function getContract(string calldata _name)
-        external
-        view
-        override
-        returns (address)
-    {
+    function getContract(string calldata _name) external view override returns (address) {
         return contractStorage[keccak256(abi.encodePacked(_name))];
     }
 
