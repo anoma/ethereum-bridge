@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "hardhat/console.sol";
-
 contract Bridge is IBridge, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -161,14 +159,12 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 powerAccumulator = 0;
 
         for (uint256 i = 0; i < validatorSet.powers.length; i++) {
-            console.log("%s", i);
             if (!isValidSignature(validatorSet.validators[i], _messageHash, _signatures[i])) {
                 return false;
             }
 
             powerAccumulator = powerAccumulator + validatorSet.powers[i];
             if (powerAccumulator >= thresholdVotingPower) {
-                console.log("OVER");
                 return true;
             }
         }
