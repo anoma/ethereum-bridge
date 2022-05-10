@@ -17,7 +17,7 @@ describe("Bridge", function () {
 
     beforeEach(async function () {
         const [_, governanceAddress] = await ethers.getSigners();
-        const totalValidators = 121;
+        const totalValidators = 120;
         const normalizedThreshold = normalizeThreshold();
         const powers = randomPowers(totalValidators);
         signers = getSigners(totalValidators);
@@ -184,8 +184,8 @@ describe("Bridge", function () {
         expect(await bridge.validatorSetNonce()).to.be.equal(2);
     });
 
-    it.only("Update validate set (max number of validators) testing", async function () {
-        const maxTotalValidators = 121;
+    it("Update validate set (max number of validators) testing", async function () {
+        const maxTotalValidators = 120;
         const newPowers = randomPowers(maxTotalValidators);
         const newSigners = getSigners(maxTotalValidators);
         const newValidatorsAddresses = getSignersAddresses(newSigners);
@@ -198,9 +198,6 @@ describe("Bridge", function () {
 
         // valid update vaidator set
         const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-
-        console.log(currentValidatorSetArgs.validators.length)
-        console.log(currentValidatorSetArgs.powers.length)
 
         const newValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
         const newValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
@@ -216,9 +213,6 @@ describe("Bridge", function () {
         const newValidatorSetArgsTwo = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2)
         const newValidatorSetHashTwo = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 2, "bridge")
         const signaturesTwo = await generateSignatures(newSigners, newValidatorSetHashTwo);
-
-        console.log(currentValidatorSetArgsTwo.validators.length)
-        console.log(currentValidatorSetArgsTwo.powers.length)
 
         await bridge.updateValidatorSet(currentValidatorSetArgsTwo, newValidatorSetArgsTwo, signaturesTwo)
         expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHashTwo);
