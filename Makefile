@@ -1,9 +1,6 @@
 check:
 	VIAIR=true npx hardhat check
 
-size:
-	VIAIR=true npx hardhat check
-
 lint:
 	npx solhint 'contracts/**/*.sol'
 	npx prettier --check 'contracts/**/*.sol'
