@@ -9,6 +9,7 @@ lint:
 	npx prettier --check 'contracts/**/*.sol'
 
 lint-fix:
+	npx solhint 'contracts/**/*.sol' --fix
 	npx prettier --write 'contracts/**/*.sol'
 
 build-prod:

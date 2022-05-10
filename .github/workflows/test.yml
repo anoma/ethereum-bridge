@@ -29,6 +29,7 @@ jobs:
       - run: make test-gas
         env:
           COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      - run: make build-size
 
   coverage:
     runs-on: ubuntu-latest
