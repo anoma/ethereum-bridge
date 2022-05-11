@@ -6,9 +6,10 @@ import "../interface/IBridge.sol";
 import "../interface/IGovernance.sol";
 import "../interface/ICommon.sol";
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract Governance is IGovernance {
+contract Governance is IGovernance, ReentrancyGuard {
     uint256 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
@@ -77,7 +78,7 @@ contract Governance is IGovernance {
         Signature[] calldata _signatures,
         string calldata _name,
         address _address
-    ) external {
+    ) external nonReentrant {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(abi.encodePacked(version, "addContract", _name, _address));
 

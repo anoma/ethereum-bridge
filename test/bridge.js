@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
 
 describe("Bridge", function () {
     let Hub;
@@ -17,7 +17,7 @@ describe("Bridge", function () {
     const maxTokenSupply = 1000000000;
 
     beforeEach(async function () {
-        const [_, governanceAddress, randomSigner] = await ethers.getSigners();
+        const [_, governanceAddress] = await ethers.getSigners();
         const totalValidators = 125;
         const normalizedThreshold = normalizeThreshold();
         const powers = randomPowers(totalValidators);
@@ -88,7 +88,7 @@ describe("Bridge", function () {
         await  expect(resultInvalidValidatoSetHash).to.be.revertedWith("Invalid validatorSetHash.")
     });
 
-    it("transferToERC testing", async function () {
+    it("transferToERC20 testing", async function () {
         const toAddresses = [ethers.Wallet.createRandom().address]
         const fromAddresses = [token.address]
         const amounts = [10000]
@@ -299,7 +299,7 @@ describe("Bridge", function () {
         await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");
     });
 
-    it("transferToNamada testing", async function () {
+    it("withdraw testing", async function () {
         // withdraw invalid caller
         const withdrawInvalid = bridge.withdraw([token.address], ethers.Wallet.createRandom().address)
         await expect(withdrawInvalid).to.be.revertedWith("Invalid caller.")
