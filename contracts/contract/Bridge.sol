@@ -16,7 +16,6 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
-    uint256 public validatorSetNonce = 0;
 
     uint256 private transferToERC20Nonce = 0;
     uint256 private transferToNamadaNonce = 0;
@@ -38,10 +37,8 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         version = _version;
         thresholdVotingPower = _thresholdVotingPower;
-        validatorSetHash = computeValidatorSetHash(_validators, _powers, validatorSetNonce);
+        validatorSetHash = computeValidatorSetHash(_validators, _powers, 0);
         hub = IHub(_hub);
-
-        emit ValidatorSetUpdate(validatorSetNonce, _validators, validatorSetHash);
     }
 
     function authorize(
@@ -107,36 +104,8 @@ contract Bridge is IBridge, ReentrancyGuard {
         emit TransferToNamada(transferToNamadaNonce, _froms, amounts);
     }
 
-    function updateValidatorSet(
-        ValidatorSetArgs calldata _currentValidatorSetArgs,
-        ValidatorSetArgs calldata _newValidatorSetArgs,
-        Signature[] calldata _signatures
-    ) external {
-        require(
-            _newValidatorSetArgs.nonce > _currentValidatorSetArgs.nonce &&
-                _newValidatorSetArgs.nonce < _currentValidatorSetArgs.nonce + MAX_NONCE_INCREMENT,
-            "Invalid validatorSetNonce"
-        );
-        require(
-            _isValidSignatureSet(_currentValidatorSetArgs, _signatures) &&
-                _isValidValidatorSetArg(_newValidatorSetArgs),
-            "Mismatch array length."
-        );
-        require(computeValidatorSetHash(_currentValidatorSetArgs) == validatorSetHash, "Invalid validatorSetHash.");
-
-        require(_isEnoughVotingPower(_newValidatorSetArgs.powers, thresholdVotingPower), "Not enough voting power.");
-
-        bytes32 newValidatorSetHash = computeValidatorSetHash(_newValidatorSetArgs);
-
-        require(
-            checkValidatorSetVotingPowerAndSignature(_currentValidatorSetArgs, _signatures, newValidatorSetHash),
-            "Invalid validator set signature."
-        );
-
-        validatorSetHash = newValidatorSetHash;
-        validatorSetNonce = _newValidatorSetArgs.nonce;
-
-        emit ValidatorSetUpdate(validatorSetNonce, _newValidatorSetArgs.validators, newValidatorSetHash);
+    function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
+        validatorSetHash = _validatorSetHash;
     }
 
     function withdraw(address[] calldata _tokens, address payable _to) external onlyLatestGovernanceContract {
@@ -186,7 +155,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         return error == ECDSA.RecoverError.NoError && _signer == signer;
     }
 
-    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) private view returns (bytes32) {
+    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(

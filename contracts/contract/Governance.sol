@@ -13,7 +13,7 @@ contract Governance is IGovernance {
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
-    uint256 public validatorSetNonce = 0;
+    uint256 public validatorSetNonce = 1;
 
     uint256 public withdrawNonce = 0;
 
@@ -32,7 +32,7 @@ contract Governance is IGovernance {
         require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
 
         version = _version;
-        validatorSetHash = computeValidatorSetHash(_validators, _powers, validatorSetNonce);
+        validatorSetHash = computeValidatorSetHash(_validators, _powers, 0);
         thresholdVotingPower = _thresholdVotingPower;
         hub = IHub(_hub);
     }
@@ -89,27 +89,39 @@ contract Governance is IGovernance {
         hub.addContract(_name, _address);
     }
 
-    function updateGovernanceSet(
+    function updateValidatorsSet(
         ValidatorSetArgs calldata _currentValidatorSetArgs,
-        ValidatorSetArgs calldata _newValidatorSetArgs,
+        bytes32 _bridgeValidatorSetHash,
+        bytes32 _governanceValidatorSetHash,
         Signature[] calldata _signatures
     ) external {
         require(
-            validatorSetNonce < _newValidatorSetArgs.nonce &&
-                validatorSetNonce + MAX_NONCE_INCREMENT > _newValidatorSetArgs.nonce,
-            "Invalid nonce."
+            _currentValidatorSetArgs.validators.length == _currentValidatorSetArgs.powers.length &&
+                _currentValidatorSetArgs.validators.length == _signatures.length,
+            "Malformed input."
         );
 
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        bytes32 newValidatorSetHash = computeValidatorSetHash(_newValidatorSetArgs);
-        require(bridge.authorize(_currentValidatorSetArgs, _signatures, newValidatorSetHash), "Unauthorized.");
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                version,
+                "updateValidatorsSet",
+                _bridgeValidatorSetHash,
+                _governanceValidatorSetHash,
+                validatorSetNonce
+            )
+        );
 
-        validatorSetHash = newValidatorSetHash;
-        validatorSetNonce = _newValidatorSetArgs.nonce;
+        require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 
-        emit ValidatorSetUpdate(validatorSetNonce, _newValidatorSetArgs.validators, newValidatorSetHash);
+        validatorSetHash = _governanceValidatorSetHash;
+        bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
+
+        validatorSetNonce = validatorSetNonce + 1;
+
+        emit ValidatorSetUpdate(validatorSetNonce, _governanceValidatorSetHash, _bridgeValidatorSetHash);
     }
 
     function authorize(

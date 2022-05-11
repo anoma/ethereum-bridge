@@ -21,6 +21,9 @@ build-size:
 clean:
 	npx hardhat clean
 
+benchmark:
+	node benchmarks/index.js
+
 test:
 	RUNS=10 VIAIR=true npx hardhat test
 

@@ -4,17 +4,8 @@ pragma solidity ^0.8.13;
 import "./ICommon.sol";
 
 interface IBridge is ICommon {
-    event ValidatorSetUpdate(uint256 indexed validatorSetNonce, address[] validators, bytes32 validateSetHash);
-
     event TransferToNamada(uint256 indexed nonce, address[] froms, uint256[] amounts);
-
     event TrasferToECR(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
-
-    function updateValidatorSet(
-        ValidatorSetArgs calldata currentValidatorSetArgs,
-        ValidatorSetArgs calldata newValidatorSetArgs,
-        Signature[] calldata signatures
-    ) external;
 
     function transferToERC(
         ValidatorSetArgs calldata validatorSetArgs,
@@ -34,4 +25,6 @@ interface IBridge is ICommon {
     ) external view returns (bool);
 
     function withdraw(address[] calldata tokens, address payable to) external;
+
+    function updateValidatorSetHash(bytes32 _validatorSetHash) external;
 }

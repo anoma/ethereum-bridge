@@ -1,163 +1,65 @@
 const { ethers, network } = require("hardhat");
-const QuickChart = require('quickchart-js');
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash } = require("./../test/utils/utilities")
 
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash } = require("./../test/utils/utilities")
+const updateValidatorSetBenchmark = async function (index) {
+    const normalizedThreshold = normalizeThreshold();
+    const powers = randomPowers(index);
+    const bridgeSigners = getSigners(index);
+    const bridgeValidatorsAddresses = getSignersAddresses(bridgeSigners);
+    const bridgeNormalizedPowers = normalizePowers(powers);
+    const powerThreshold = computeThreshold(normalizedThreshold);
 
-const MIN_VALIDATOR = 30
-const MAX_VALIDATOR = 125
+    const governanceSigners = getSigners(index);
+    const governanceValidatorsAddresses = getSignersAddresses(governanceSigners);
+    const governanceNormalizedPowers = normalizePowers(powers);
 
+    const Hub = await ethers.getContractFactory("Hub");
+    const Governance = await ethers.getContractFactory("Governance");
+    const Bridge = await ethers.getContractFactory("Bridge");
 
-const benchmarkLadder = async function(from, to, chartName) {
-    const gasUsed = []
-    const y = []
+    const hub = await Hub.deploy();
+    const hubAddress = hub.address;
 
-    for (let step = from; step < to; step++) {
-        // init contracts
-        const maxTokenSupply = 1000000;
-        const totalValidators = step;
-        const [_, governanceAddress] = await ethers.getSigners();
-        const normalizedThreshold = normalizeThreshold();
-        const powers = randomPowers(totalValidators);
-        const signers = getSigners(totalValidators);
-        const validatorsAddresses = getSignersAddresses(signers);
-        const normalizedPowers = normalizePowers(powers);
-        const powerThreshold = computeThreshold(normalizedThreshold);
+    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
+    await governance.deployed();
 
-        const Hub = await ethers.getContractFactory("Hub");
-        const Bridge = await ethers.getContractFactory("Bridge");
-        const Token = await ethers.getContractFactory("Token");
+    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
+    await bridge.deployed();
 
-        const hub = await Hub.deploy();
-        const hubAddress = hub.address;
+    await hub.addContract("governance", governance.address);
+    await hub.addContract("bridge", bridge.address);
 
-        const bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, powerThreshold, hubAddress);
-        await bridge.deployed();
+    await hub.completeContractInit();
 
-        const token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
-        await token.deployed();
+    await network.provider.send("evm_mine")
 
-        await hub.addContract("governance", governanceAddress.address);
-        await hub.completeContractInit();
-        
-        await network.provider.send("evm_mine")
+    const newPowers = randomPowers(index);
+    const newSigners = getSigners(index);
+    const newValidatorsAddresses = getSignersAddresses(newSigners);
+    const newNormalizedPowers = normalizePowers(newPowers);
 
-        // benchmark function
-        const newTotalValidators = step;
-        const newPowers = randomPowers(newTotalValidators);
-        const newSigners = getSigners(newTotalValidators);
-        const newValidatorsAddresses = getSignersAddresses(newSigners);
-        const newNormalizedPowers = normalizePowers(newPowers);
+    const currentBridgeValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
 
-        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-        const newValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
-        const newValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
-        const signatures = await generateSignatures(signers, newValidatorSetHash);
+    const newBridgeValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
+    const newGovernanceValidatorSetHash = generateValidatorSetHash(governanceValidatorsAddresses, governanceNormalizedPowers, 1, "governance")
 
-        try {
-            const tx = await bridge.updateValidatorSet(currentValidatorSetArgs, newValidatorSetArgs, signatures)
-            const receipt = await tx.wait()
+    const messageHash = generateArbitraryHash(
+        ["uint256", "string", "bytes32", "bytes32", "uint256"],
+        [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 1]
+    )
 
-            gasUsed.push(Number(receipt.gasUsed))
-            y.push(step)
-        } catch {
-            console.log("ERROR")
-            console.log("total validators:", step)
-        }
+    const signatures = await generateSignatures(bridgeSigners, messageHash);
+
+    try {
+        const tx = await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures)
+
+        const receipt = await tx.wait()
+        const txGas = Number(receipt.gasUsed);
+
+        return [index, txGas]
+    } catch (e) {
+        throw `Error execution updateValidatorsSet: ${e}`;
     }
-    const chart = new QuickChart();
-    
-    chart
-    .setConfig({
-        type: 'line',
-        data: { 
-            labels: y, 
-            datasets: [
-                { label: 'GasUsed', data: gasUsed }
-            ] 
-        },
-    })
-    .setWidth(800)
-    .setHeight(400)
-    .setBackgroundColor('white');
-
-    chart.toFile(chartName);
 }
 
-const benchmarkMaxValidator = async function(from, to, chartName) {
-    const gasUsed = []
-    const y = []
-
-    for (let step = from; step < to; step++) {
-        // init contracts
-        const maxTokenSupply = 1000000;
-        const totalValidators = 125;
-        const [_, governanceAddress] = await ethers.getSigners();
-        const normalizedThreshold = normalizeThreshold();
-        const powers = randomPowers(totalValidators);
-        const signers = getSigners(totalValidators);
-        const validatorsAddresses = getSignersAddresses(signers);
-        const normalizedPowers = normalizePowers(powers);
-        const powerThreshold = computeThreshold(normalizedThreshold);
-
-        const Hub = await ethers.getContractFactory("Hub");
-        const Bridge = await ethers.getContractFactory("Bridge");
-        const Token = await ethers.getContractFactory("Token");
-
-        const hub = await Hub.deploy();
-        const hubAddress = hub.address;
-
-        const bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, powerThreshold, hubAddress);
-        await bridge.deployed();
-
-        const token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
-        await token.deployed();
-
-        await hub.addContract("governance", governanceAddress.address);
-        await hub.completeContractInit();
-        
-        await network.provider.send("evm_mine")
-
-        // benchmark function
-        const newTotalValidators = 125;
-        const newPowers = randomPowers(newTotalValidators);
-        const newSigners = getSigners(newTotalValidators);
-        const newValidatorsAddresses = getSignersAddresses(newSigners);
-        const newNormalizedPowers = normalizePowers(newPowers);
-
-        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-        const newValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
-        const newValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
-        const signatures = await generateSignatures(signers, newValidatorSetHash);
-
-        try {
-            const tx = await bridge.updateValidatorSet(currentValidatorSetArgs, newValidatorSetArgs, signatures)
-            const receipt = await tx.wait()
-
-            gasUsed.push(Number(receipt.gasUsed))
-            y.push(step)
-        } catch {
-            console.log("ERROR")
-            console.log("total validators:", step)
-        }
-    }
-    const chart = new QuickChart();
-    
-    chart
-    .setConfig({
-        type: 'line',
-        data: { 
-            labels: y, 
-            datasets: [
-                { label: 'GasUsed', data: gasUsed }
-            ] 
-        },
-    })
-    .setWidth(800)
-    .setHeight(400)
-    .setBackgroundColor('white');
-
-    chart.toFile(chartName);
-}
-
-// benchmarkLadder(MIN_VALIDATOR, MAX_VALIDATOR, "updateValidatorSetLader.png")
-benchmarkMaxValidator(1, 10, "benchmarkMaxValidator.png")
+exports.updateValidatorSetBenchmark = updateValidatorSetBenchmark;
