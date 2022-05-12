@@ -39,4 +39,7 @@ test-coverage:
 deps:
 	npm install
 
+ci:
+	npm ci
+
 .PHONY: build build-prod clean test test-gas test-coverage lint lint-fix deps build-size check size

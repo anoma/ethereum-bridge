@@ -117,12 +117,12 @@ contract Governance is IGovernance, ReentrancyGuard {
 
         require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 
+        validatorSetNonce = validatorSetNonce + 1;
+
         validatorSetHash = _governanceValidatorSetHash;
         bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
 
-        validatorSetNonce = validatorSetNonce + 1;
-
-        emit ValidatorSetUpdate(validatorSetNonce, _governanceValidatorSetHash, _bridgeValidatorSetHash);
+        emit ValidatorSetUpdate(validatorSetNonce - 1, _governanceValidatorSetHash, _bridgeValidatorSetHash);
     }
 
     function authorize(
