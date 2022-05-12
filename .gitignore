@@ -4,6 +4,7 @@ coverage
 coverage.json
 typechain
 *.png
+scripts/*.json
 
 # Hardhat files
 cache
