@@ -1,6 +1,7 @@
 const prompt = require('prompt');
 const { ethers } = require("hardhat");
 const fs = require('fs')
+const assert = require('assert');
 
 async function main() {
     const network = await ethers.getDefaultProvider().getNetwork();
@@ -13,23 +14,30 @@ async function main() {
         type: 'boolean'
     }])
 
-    const { validatorSetPath } = await prompt.get([{
-        name: 'validatorSetPath',
+    if (!correctNetwork) {
+        return;
+    }
+
+    const { brideValidatorSetPath } = await prompt.get([{
+        name: 'brideValidatorSetPath',
         required: true,
-        description: "Full path to validator set json file",
+        description: "Full path to bridge validator set json file",
         type: 'string'
     }])
 
-    if (!isValidJsonFile(validatorSetPath, network)) {
+    const { governanceValidatorSetPath } = await prompt.get([{
+        name: 'governanceValidatorSetPath',
+        required: true,
+        description: "Full path to governance validator set json file",
+        type: 'string'
+    }])
+
+    if (!isValidJsonFile(brideValidatorSetPath, network) || !isValidJsonFile(governanceValidatorSetPath, network)) {
         return;
     }
 
-    if (!isValidValidatorSet(validatorSetPath)) {
+    if (!isValidValidatorSet(brideValidatorSetPath) || !isValidValidatorSet(governanceValidatorSetPath)) {
         return
-    }
-
-    if (!correctNetwork) {
-        return;
     }
 
     const [deployer] = await ethers.getSigners();
@@ -47,12 +55,22 @@ async function main() {
         return;
     }
 
-    const validatorSetContent = fs.readFileSync(validatorSetPath)
-    const validatorSet = JSON.parse(validatorSetContent)
+    // bridge constructors parameters
+    const bridgeValidatorSetContent = fs.readFileSync(brideValidatorSetPath)
+    const bridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
 
-    const validators = Object.keys(validatorSet)
-    const votingPowers = Object.values(validatorSet)
-    const votingPowerThreshold = computeThreshold(votingPowers)
+    const bridgeValidators = Object.keys(bridgeValidatorSet)
+    const bridgeVotingPowers = Object.values(bridgeValidatorSet)
+    const bridgeVotingPowerThreshold = computeThreshold(bridgeVotingPowers)
+
+    // governance constroctor parameters
+    const governanceValidatorSetContent = fs.readFileSync(governanceValidatorSetPath)
+    const governanceValidatorSet = JSON.parse(governanceValidatorSetContent)
+
+    const governanceValidators = Object.keys(governanceValidatorSet)
+    const governanceVotingPowers = Object.values(governanceValidatorSet)
+    const governanceVotingPowerThreshold = computeThreshold(governanceVotingPowers)
+
 
     const Hub = await ethers.getContractFactory("Hub");
     const Bridge = await ethers.getContractFactory("Bridge");
@@ -61,10 +79,10 @@ async function main() {
     const hub = await Hub.deploy();
     await hub.deployed();
 
-    const bridge = await Bridge.deploy(1, validators, votingPowers, votingPowerThreshold, hub.address);
+    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address);
     await bridge.deployed();
 
-    const governance = await Governance.deploy(1, validators, votingPowers, votingPowerThreshold, hub.address);
+    const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address);
     await governance.deployed()
 
     await hub.addContract("governance", governance.address);
@@ -72,15 +90,25 @@ async function main() {
 
     await hub.completeContractInit();
 
+    console.log("")
     console.log(`Hub address: ${hub.address}`)
     console.log(`Governance address: ${governance.address}`)
     console.log(`Bridge address: ${bridge.address}`)
+    console.log("")
 
     await writeState(hub.address, governance.address, bridge.address, network)
+
+    console.log("Running checks...")
+    const governanceAddressHub = await hub.getContract("governance")
+    const bridgeAddressHub = await hub.getContract("bridge")
+
+    assert(governanceAddressHub == governance.address)
+    assert(bridgeAddressHub == bridge.address)
+    console.log("Looking good!")
 }
 
 const writeState = async (hubAddress, governanceAddress, bridgeAddress, network) => {
-    const filePath = `scripts/${network.name}-${network.chainId}.json`
+    const filePath = `scripts/state-${network.name}-${network.chainId}.json`
     const stateExist = fs.existsSync(filePath)
 
     const stateContent = JSON.stringify({
@@ -119,8 +147,10 @@ function isValidValidatorSet(path) {
     const content = fs.readFileSync(path)
     const jsonContent = JSON.parse(content)
     const totalValidators = Object.keys(jsonContent).length
+    const votingPowerSum = Object.values(jsonContent).reduce((acc, val) => acc + val, 0)
+    const maxVotingPower = Math.pow(2, 32)
 
-    return totalValidators > 0 && totalValidators < 126 && Object.values(jsonContent).reduce((acc, val) => acc + val, 0) - 1 == Math.pow(2, 32)
+    return totalValidators > 0 && totalValidators < 126 && votingPowerSum <= maxVotingPower && votingPowerSum >= maxVotingPower - 10
 }
 
 function isValidJsonFile(path, network) {
