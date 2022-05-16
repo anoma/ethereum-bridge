@@ -1,12 +1,11 @@
 const prompt = require('prompt');
 const { ethers } = require("hardhat");
+const hre = require("hardhat");
 const fs = require('fs')
 const assert = require('assert');
 
 async function main() {
-    const network = await ethers.getDefaultProvider().getNetwork();
-
-    console.log(`Running on network ${network.name} with chain-id ${network.chainId}`)
+    console.log(`Running on network ${hre.network.name} with chain-id ${hre.network.config.chainId}`)
     const { correctNetwork } = await prompt.get([{
         name: 'correctNetwork',
         required: true,
@@ -32,7 +31,7 @@ async function main() {
         type: 'string'
     }])
 
-    if (!isValidJsonFile(brideValidatorSetPath, network) || !isValidJsonFile(governanceValidatorSetPath, network)) {
+    if (!isValidJsonFile(brideValidatorSetPath) || !isValidJsonFile(governanceValidatorSetPath)) {
         return;
     }
 
@@ -96,7 +95,11 @@ async function main() {
     console.log(`Bridge address: ${bridge.address}`)
     console.log("")
 
-    await writeState(hub.address, governance.address, bridge.address, network)
+    await writeState(hub.address, governance.address, bridge.address, hre.network.name, hre.network.config.chainId)
+
+    await etherscan(hub.address, [], hre.network.name);
+    await etherscan(governance.address, [1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address], hre.network.name);
+    await etherscan(bridge.address, [1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address], hre.network.name);
 
     console.log("Running checks...")
     const governanceAddressHub = await hub.getContract("governance")
@@ -107,8 +110,8 @@ async function main() {
     console.log("Looking good!")
 }
 
-const writeState = async (hubAddress, governanceAddress, bridgeAddress, network) => {
-    const filePath = `scripts/state-${network.name}-${network.chainId}.json`
+const writeState = async (hubAddress, governanceAddress, bridgeAddress, networkName, networkChainId) => {
+    const filePath = `scripts/state-${networkName}-${networkChainId}.json`
     const stateExist = fs.existsSync(filePath)
 
     const stateContent = JSON.stringify({
@@ -116,8 +119,8 @@ const writeState = async (hubAddress, governanceAddress, bridgeAddress, network)
         'governance': governanceAddress,
         'bridge': bridgeAddress,
         'network': {
-            'name': network.name,
-            'chainId': network.chainId
+            'name': networkName,
+            'chainId': networkChainId
         }
     })
 
@@ -153,12 +156,8 @@ function isValidValidatorSet(path) {
     return totalValidators > 0 && totalValidators < 126 && votingPowerSum <= maxVotingPower && votingPowerSum >= maxVotingPower - 10
 }
 
-function isValidJsonFile(path, network) {
+function isValidJsonFile(path) {
     if (!fs.existsSync(path)) {
-        return false
-    }
-
-    if (network.chainId != 1 && path.includes('fake-')) {
         return false
     }
 
@@ -170,6 +169,21 @@ function isValidJsonFile(path, network) {
         return false
     }
 }
+
+async function etherscan(address, constructorArgs, networkName) {
+    if (networkName == 'localhost') {
+        return
+    }
+
+    try {
+        await hre.run("verify:verify", {
+            address: address,
+            constructorArguments: constructorArgs
+        });
+    } catch (e) {
+        console.log(e)
+    }
+}   
 
 main()
     .then(() => process.exit(0))

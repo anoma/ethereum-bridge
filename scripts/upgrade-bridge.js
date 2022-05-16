@@ -1,13 +1,11 @@
 const prompt = require('prompt');
 const { ethers } = require("hardhat");
+const hre = require("hardhat")
 const fs = require('fs');
-const { assert } = require('console');
 const assert = require('assert');
 
 async function main() {
-    const network = await ethers.getDefaultProvider().getNetwork();
-
-    console.log(`Running on network ${network.name} with chain-id ${network.chainId}`)
+    console.log(`Running on network ${hre.network.name} with chain-id ${hre.network.config.chainId}`)
     const { correctNetwork } = await prompt.get([{
         name: 'correctNetwork',
         required: true,
@@ -40,13 +38,11 @@ async function main() {
         type: 'string'
     }])
 
-    if (!isValidJsonFile(currentBrideValidatorSetPath, network) || !isValidJsonFile(newBrideValidatorSetPath, network)) {
-        console.log('1')
+    if (!isValidJsonFile(currentBrideValidatorSetPath) || !isValidJsonFile(newBrideValidatorSetPath)) {
         return;
     }
 
     if (!isValidValidatorSet(currentBrideValidatorSetPath) || !isValidValidatorSet(newBrideValidatorSetPath)) {
-        console.log('2')
         return
     }
 
@@ -95,7 +91,7 @@ async function main() {
     const bridgeVotingPowers = Object.values(bridgeValidatorSet)
 
     // new bridge constructors parameters
-    const newBridgeValidatorSetContent = fs.readFileSync(currentBrideValidatorSetPath)
+    const newBridgeValidatorSetContent = fs.readFileSync(newBrideValidatorSetPath)
     const newBridgeValidatorSet = JSON.parse(newBridgeValidatorSetContent)
 
     const newBridgeValidators = Object.keys(newBridgeValidatorSet)
@@ -127,7 +123,10 @@ async function main() {
     console.log(`New Bridge address: ${bridge.address}`)
     console.log("")
 
-    await updateState(bridge.address, network)
+    await updateState(bridge.address, hre.network.name, hre.network.config.chainId)
+    
+    // wait for block to be mined...
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
     console.log("Running checks...")
     const hub = await Hub.attach(hubAddress)
@@ -139,8 +138,8 @@ async function main() {
     console.log("Looking good!")
 }
 
-const updateState = async (bridgeAddress, network) => {
-    const filePath = `scripts/state-${network.name}-${network.chainId}.json`
+const updateState = async (bridgeAddress, networkName, networkChainId) => {
+    const filePath = `scripts/state-${networkName}-${networkChainId}.json`
     const stateExist = fs.existsSync(filePath)
 
     if (!stateExist) {
@@ -194,12 +193,8 @@ function isValidValidatorSet(path) {
     return totalValidators > 0 && totalValidators < 126 && votingPowerSum <= maxVotingPower && votingPowerSum >= maxVotingPower - 10
 }
 
-function isValidJsonFile(path, network) {
+function isValidJsonFile(path) {
     if (!fs.existsSync(path)) {
-        return false
-    }
-
-    if (network.chainId != 1 && path.includes('fake-')) {
         return false
     }
 

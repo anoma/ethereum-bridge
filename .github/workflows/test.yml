@@ -29,7 +29,7 @@ jobs:
       - run: make test
       - run: make test-gas
         env:
-          COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+          COINMARKETCAP: ${{ secrets.COINMARKETCAP_API_KEY }}
       - run: make build-size
 
   coverage:
@@ -52,7 +52,6 @@ jobs:
       - run: make test-coverage
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-      # - uses: codecov/codecov-action@v3 TODO: setup codecov
   
   slither:
     runs-on: ubuntu-latest
