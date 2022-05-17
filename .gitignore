@@ -4,6 +4,9 @@ coverage
 coverage.json
 typechain
 *.png
+scripts/*.json
+!scripts/state-*.json
+scripts/state-homestead-1.json
 
 # Hardhat files
 cache

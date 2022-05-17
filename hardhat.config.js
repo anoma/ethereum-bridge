@@ -4,7 +4,6 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
-require('hardhat-exposed');
 require('solidity-coverage')
 require('hardhat-contract-sizer');
 
@@ -23,11 +22,19 @@ module.exports = {
     },
   },
   networks: {
+    localhost: {
+      chainId: 31337,
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      chainId: 3,
+      accounts: process.env.ROPSTEN_PRIVATE_KEY !== undefined ? [process.env.ROPSTEN_PRIVATE_KEY] : [],
     },
+    goerli: {
+      url: process.env.GOERLI_URL || "",
+      chainId: 5,
+      accounts: process.env.GOERLI_PRIVATE_KEY !== undefined ? [process.env.GOERLI_PRIVATE_KEY] : [],
+    }
   },
   contractSizer: {
     alphaSort: true,
@@ -43,6 +50,9 @@ module.exports = {
     coinmarketcap: process.env.COINMARKETCAP
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      ropsten: process.env.ROPSTEN_ETHERSCAN_API_KEY,
+      goerli: process.env.GOERLI_ETHERSCAN_API_KEY
+    }
   },
 };

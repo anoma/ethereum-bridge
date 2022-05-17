@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
 
 describe("Bridge", function () {
     let Hub;
@@ -13,13 +13,16 @@ describe("Bridge", function () {
     let validatorsAddresses;
     let normalizedPowers;
     let powerThreshold;
+    let governanceAddr;
     const maxTokenSupply = 1000000000;
 
     beforeEach(async function () {
         const [_, governanceAddress] = await ethers.getSigners();
-        const totalValidators = 120;
+        const totalValidators = 125;
         const normalizedThreshold = normalizeThreshold();
         const powers = randomPowers(totalValidators);
+
+        governanceAddr = governanceAddress
         signers = getSigners(totalValidators);
         validatorsAddresses = getSignersAddresses(signers);
         normalizedPowers = normalizePowers(powers);
@@ -38,7 +41,7 @@ describe("Bridge", function () {
         token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
         await token.deployed();
 
-        await hub.addContract("governance", governanceAddress.address);
+        await hub.addContract("governance", governanceAddr.address);
         await hub.completeContractInit();
 
         await network.provider.send("evm_mine")
@@ -58,167 +61,6 @@ describe("Bridge", function () {
         await expect(bridgeInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
     });
 
-    it("Update validate set testing", async function () {
-        const newTotalValidators = 60;
-        const newPowers = randomPowers(newTotalValidators);
-        const newSigners = getSigners(newTotalValidators);
-        const newValidatorsAddresses = getSignersAddresses(newSigners);
-        const newNormalizedPowers = normalizePowers(newPowers);
-        const newPowerThreshold = computeThreshold(newNormalizedPowers);
-
-        // due to floating point operation/rounding, threshold is not stable
-        expect(newPowerThreshold).to.be.greaterThan(powerThreshold - 10);
-        expect(newPowerThreshold).to.be.lessThan(powerThreshold + 10);
-
-        // valid update vaidator set
-        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-        const newValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
-        const newValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
-        const signatures = await generateSignatures(signers, newValidatorSetHash);
-
-        await bridge.updateValidatorSet(currentValidatorSetArgs, newValidatorSetArgs, signatures)
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-        
-        await network.provider.send("evm_mine")
-
-        // invalid lower nonce
-        const newValidatorSetArgsLowerNonce = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 0)
-        const newValidatorSetHashLowerNonce = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
-        const signaturesLowerNonce = await generateSignatures(newSigners, newValidatorSetHashLowerNonce);
-
-        const bridgeInvalidLowerNonce = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsLowerNonce, signaturesLowerNonce)
-        await expect(bridgeInvalidLowerNonce).to.be.revertedWith("Invalid validatorSetNonce");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // invalid too big nonce 
-        const newValidatorSetArgsTooBigNonce = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 10003)
-        const newValidatorSetHashTooBigNonce = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 10003, "bridge")
-        const signaturesTooBigNonce = await generateSignatures(newSigners, newValidatorSetHashTooBigNonce);
-
-        const bridgeInvalidTooBigNonce = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsTooBigNonce, signaturesTooBigNonce)
-        await expect(bridgeInvalidTooBigNonce).to.be.revertedWith("Invalid validatorSetNonce");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // invalid validator set structure
-        const newValidatorSetArgsBadStructure = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2)
-        const newValidatorSetHashBadStructure = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 2, "bridge")
-        const signaturesBadStructure = await generateSignatures(newSigners, newValidatorSetHashBadStructure);
-
-        const bridgeInvalidBadStructure = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsBadStructure, signaturesBadStructure.splice(1))
-        await expect(bridgeInvalidBadStructure).to.be.revertedWith("Mismatch array length.");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // invalid validator set hash
-        const newCurrentValidatorSet = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2);
-        const newValidatorSetArgsBadSValidatorSetHash = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 3)
-        const newValidatorSetHashBadSValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 3, "bridge")
-        const signaturesBadSValidatorSetHash = await generateSignatures(newSigners, newValidatorSetHashBadSValidatorSetHash);
-
-        const bridgeInvalidBadSValidatorSetHash = bridge.updateValidatorSet(newCurrentValidatorSet, newValidatorSetArgsBadSValidatorSetHash, signaturesBadSValidatorSetHash)
-        await expect(bridgeInvalidBadSValidatorSetHash).to.be.revertedWith("Invalid validatorSetHash.");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // invalid not enough voting power
-        const badVotingPower = newNormalizedPowers.map(power => Math.round(power / 10000))
-        const newValidatorSetArgsLowVotingPower = generateValidatorSetArgs(newValidatorsAddresses, badVotingPower, 2)
-        const newValidatorSetHashLowVotingPower = generateValidatorSetHash(newValidatorsAddresses, badVotingPower, 2, "bridge")
-        const signaturesLowVotingPower = await generateSignatures(newSigners, newValidatorSetHashLowVotingPower);
-
-        const bridgeInvalidLowVotingPower = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsLowVotingPower, signaturesLowVotingPower)
-        await expect(bridgeInvalidLowVotingPower).to.be.revertedWith("Not enough voting power.");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // invalid signature 1
-        const newValidatorSetArgsBadSignature = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2)
-        const newValidatorSetHashBadSignature = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 2, "bridge")
-        let signaturesBadSignature = await generateSignatures(newSigners, newValidatorSetHashBadSignature);
-        signaturesBadSignature[5].r = signaturesBadSignature[0].r
-        signaturesBadSignature[5].s = signaturesBadSignature[0].s
-        signaturesBadSignature[5].v = signaturesBadSignature[0].v
-
-        const bridgeInvalidBadSignature = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsBadSignature, signaturesBadSignature)
-        await expect(bridgeInvalidBadSignature).to.be.revertedWith("Invalid validator set signature.");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // invalid signature 2
-        const newValidatorSetArgsBadSignature2 = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2)
-        const newValidatorSetHashBadSignature2 = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 2, "bridge")
-        let signaturesBadSignature2 = await generateSignatures(newSigners, newValidatorSetHashBadSignature2);
-        const badCheckpoint = generateValidatorSetHash([newValidatorsAddresses[0]], [newNormalizedPowers[0]], 2, "bridge")
-        const badSignature = await generateSignatures([newSigners[0]], badCheckpoint)
-        signaturesBadSignature2[5] = badSignature.pop()
-
-        const bridgeInvalidBadSignature2 = bridge.updateValidatorSet(newValidatorSetArgs, newValidatorSetArgsBadSignature2, signaturesBadSignature2)
-        await expect(bridgeInvalidBadSignature2).to.be.revertedWith("Invalid validator set signature.");
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        // valid update validator set
-        const updateValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2)
-        const updateValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 2, "bridge")
-        const updateSignatures = await generateSignatures(newSigners, updateValidatorSetHash);
-
-        await bridge.updateValidatorSet(newValidatorSetArgs, updateValidatorSetArgs, updateSignatures)
-        expect(await bridge.validatorSetHash()).to.be.equal(updateValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(2);
-    });
-
-    it("Update validate set (max number of validators) testing", async function () {
-        const maxTotalValidators = 120;
-        const newPowers = randomPowers(maxTotalValidators);
-        const newSigners = getSigners(maxTotalValidators);
-        const newValidatorsAddresses = getSignersAddresses(newSigners);
-        const newNormalizedPowers = normalizePowers(newPowers);
-        const newPowerThreshold = computeThreshold(newNormalizedPowers);
-
-        // due to floating point operation/rounding, threshold is not stable
-        expect(newPowerThreshold).to.be.greaterThan(powerThreshold - 10);
-        expect(newPowerThreshold).to.be.lessThan(powerThreshold + 10);
-
-        // valid update vaidator set
-        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-
-        const newValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
-        const newValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
-        const signatures = await generateSignatures(signers, newValidatorSetHash);
-
-        await bridge.updateValidatorSet(currentValidatorSetArgs, newValidatorSetArgs, signatures)
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHash);
-        expect(await bridge.validatorSetNonce()).to.be.equal(1);
-
-        await network.provider.send("evm_mine")
-
-        const currentValidatorSetArgsTwo = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
-        const newValidatorSetArgsTwo = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 2)
-        const newValidatorSetHashTwo = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 2, "bridge")
-        const signaturesTwo = await generateSignatures(newSigners, newValidatorSetHashTwo);
-
-        await bridge.updateValidatorSet(currentValidatorSetArgsTwo, newValidatorSetArgsTwo, signaturesTwo)
-        expect(await bridge.validatorSetHash()).to.be.equal(newValidatorSetHashTwo);
-        expect(await bridge.validatorSetNonce()).to.be.equal(2);
-    })
-
     it("Authorize testing", async function () {
         const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
         const messageHash = generateArbitraryHash(["uint256", "string"], [1, "test"])
@@ -236,17 +78,18 @@ describe("Bridge", function () {
         const resultInvalid = await bridge.authorize(currentValidatorSetArgs, signaturesBadSignature, messageHash)
         expect(resultInvalid).to.be.equal(false)
 
-        // invalid array length
+        // // invalid array length
         const resultInvalidMismatchLength = bridge.authorize(currentValidatorSetArgs, [signatures[0]], messageHash)
-        await expect(resultInvalidMismatchLength).to.be.revertedWith("Mismatch array length.")
+        await expect(resultInvalidMismatchLength).to.be.reverted;
 
         // invalid validator set hash
         const currentValidatorSetArgsInvalid = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 1)
         const resultInvalidValidatoSetHash = bridge.authorize(currentValidatorSetArgsInvalid, signatures, messageHash)
-        await  expect(resultInvalidValidatoSetHash).to.be.revertedWith("Invalid validatorSetHash.")
+        // await  expect(resultInvalidValidatoSetHash).to.be.revertedWith("Invalid validatorSetHash.")
+        await expect(resultInvalidValidatoSetHash).to.be.reverted;
     });
 
-    it("transferToERC testing", async function () {
+    it("transferToERC20 testing", async function () {
         const toAddresses = [ethers.Wallet.createRandom().address]
         const fromAddresses = [token.address]
         const amounts = [10000]
@@ -456,4 +299,15 @@ describe("Bridge", function () {
         );
         await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");
     });
+
+    it("withdraw testing", async function () {
+        // withdraw invalid caller
+        const withdrawInvalid = bridge.withdraw([token.address], ethers.Wallet.createRandom().address)
+        await expect(withdrawInvalid).to.be.revertedWith("Invalid caller.")
+
+        // withdraw valid
+        await bridge.connect(governanceAddr).withdraw([token.address], ethers.Wallet.createRandom().address)
+        const balanceTokenOneAfter = await token.balanceOf(token.address);
+        expect(balanceTokenOneAfter).to.be.equal(0)  
+    })
 })

@@ -22,13 +22,14 @@ jobs:
           path: '**/node_modules'
           key: npm-v1-${{ hashFiles('**/package-lock.json') }}
           restore-keys: npm-v1-
-      - run: make deps
+      - run: make ci
         if: steps.cache.outputs.cache-hit != 'true'
       - run: make lint
+      - run: make node &
       - run: make test
       - run: make test-gas
         env:
-          COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+          COINMARKETCAP: ${{ secrets.COINMARKETCAP_API_KEY }}
       - run: make build-size
 
   coverage:
@@ -46,12 +47,11 @@ jobs:
           path: '**/node_modules'
           key: npm-v1-${{ hashFiles('**/package-lock.json') }}
           restore-keys: npm-v1-
-      - run: make deps
+      - run: make ci
         if: steps.cache.outputs.cache-hit != 'true'
       - run: make test-coverage
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-      - uses: codecov/codecov-action@v3
   
   slither:
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
           path: '**/node_modules'
           key: npm-v1-${{ hashFiles('**/package-lock.json') }}
           restore-keys: npm-v1-
-      - run: make deps
+      - run: make ci
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Clean project         
         run: make clean

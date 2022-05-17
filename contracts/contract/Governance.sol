@@ -6,14 +6,15 @@ import "../interface/IBridge.sol";
 import "../interface/IGovernance.sol";
 import "../interface/ICommon.sol";
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract Governance is IGovernance {
+contract Governance is IGovernance, ReentrancyGuard {
     uint256 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
-    uint256 public validatorSetNonce = 0;
+    uint256 public validatorSetNonce = 1;
 
     uint256 public withdrawNonce = 0;
 
@@ -32,7 +33,7 @@ contract Governance is IGovernance {
         require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
 
         version = _version;
-        validatorSetHash = computeValidatorSetHash(_validators, _powers, validatorSetNonce);
+        validatorSetHash = computeValidatorSetHash(_validators, _powers, 0);
         thresholdVotingPower = _thresholdVotingPower;
         hub = IHub(_hub);
     }
@@ -77,7 +78,7 @@ contract Governance is IGovernance {
         Signature[] calldata _signatures,
         string calldata _name,
         address _address
-    ) external {
+    ) external nonReentrant {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(abi.encodePacked(version, "addContract", _name, _address));
 
@@ -89,27 +90,39 @@ contract Governance is IGovernance {
         hub.addContract(_name, _address);
     }
 
-    function updateGovernanceSet(
+    function updateValidatorsSet(
         ValidatorSetArgs calldata _currentValidatorSetArgs,
-        ValidatorSetArgs calldata _newValidatorSetArgs,
+        bytes32 _bridgeValidatorSetHash,
+        bytes32 _governanceValidatorSetHash,
         Signature[] calldata _signatures
     ) external {
         require(
-            validatorSetNonce < _newValidatorSetArgs.nonce &&
-                validatorSetNonce + MAX_NONCE_INCREMENT > _newValidatorSetArgs.nonce,
-            "Invalid nonce."
+            _currentValidatorSetArgs.validators.length == _currentValidatorSetArgs.powers.length &&
+                _currentValidatorSetArgs.validators.length == _signatures.length,
+            "Malformed input."
         );
 
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        bytes32 newValidatorSetHash = computeValidatorSetHash(_newValidatorSetArgs);
-        require(bridge.authorize(_currentValidatorSetArgs, _signatures, newValidatorSetHash), "Unauthorized.");
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                version,
+                "updateValidatorsSet",
+                _bridgeValidatorSetHash,
+                _governanceValidatorSetHash,
+                validatorSetNonce
+            )
+        );
 
-        validatorSetHash = newValidatorSetHash;
-        validatorSetNonce = _newValidatorSetArgs.nonce;
+        require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 
-        emit ValidatorSetUpdate(validatorSetNonce, _newValidatorSetArgs.validators, newValidatorSetHash);
+        validatorSetNonce = validatorSetNonce + 1;
+
+        validatorSetHash = _governanceValidatorSetHash;
+        bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
+
+        emit ValidatorSetUpdate(validatorSetNonce - 1, _governanceValidatorSetHash, _bridgeValidatorSetHash);
     }
 
     function authorize(
