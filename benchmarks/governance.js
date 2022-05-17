@@ -44,7 +44,7 @@ const updateValidatorSetBenchmarkLadder = async function (index) {
     const newGovernanceValidatorSetHash = generateValidatorSetHash(governanceValidatorsAddresses, governanceNormalizedPowers, 1, "governance")
 
     const messageHash = generateArbitraryHash(
-        ["uint256", "string", "bytes32", "bytes32", "uint256"],
+        ["uint8", "string", "bytes32", "bytes32", "uint256"],
         [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 1]
     )
 
@@ -105,7 +105,7 @@ const updateValidatorSetBenchmarkFixed = async function (index) {
     const newGovernanceValidatorSetHash = generateValidatorSetHash(governanceValidatorsAddresses, governanceNormalizedPowers, 1, "governance")
 
     const messageHash = generateArbitraryHash(
-        ["uint256", "string", "bytes32", "bytes32", "uint256"],
+        ["uint8", "string", "bytes32", "bytes32", "uint256"],
         [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 1]
     )
 
