@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract Bridge is IBridge, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 private immutable version;
+    uint8 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
@@ -26,7 +26,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     IHub private hub;
 
     constructor(
-        uint256 _version,
+        uint8 _version,
         address[] memory _validators,
         uint256[] memory _powers,
         uint256 _thresholdVotingPower,
