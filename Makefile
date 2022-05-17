@@ -28,7 +28,7 @@ node:
 	npx hardhat node
 
 test:
-	RUNS=10 VIAIR=true npx hardhat --network localhost test --parallel
+	RUNS=10 VIAIR=true npx hardhat --network localhost test
 	
 test-gas:
 	RUNS=10000 VIAIR=true REPORT_GAS=true npx hardhat test

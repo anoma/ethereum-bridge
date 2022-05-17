@@ -38,6 +38,7 @@ const runBenchmark = async function(from, to, func, extra={}) {
         }
     }
     
+    console.log(`Benchmark ${extra.name} done.`)
     createGraph(ys, xs, extra.label, extra.name)
 }
 
