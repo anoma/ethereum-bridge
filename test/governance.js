@@ -43,7 +43,7 @@ describe("Governance", function () {
         governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
         await governance.deployed();
 
-        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
         await bridge.deployed();
 
         await hub.addContract("governance", governance.address);
@@ -85,7 +85,7 @@ describe("Governance", function () {
         const newBridgeValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
         const newBridgeValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
         
-        const newGovernanceValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 1)
+        // const newGovernanceValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 1)
         const newGovernanceValidatorSetHash = generateValidatorSetHash(governanceValidatorsAddresses, governanceNormalizedPowers, 1, "governance")
 
         const messageHash = generateArbitraryHash(
@@ -98,7 +98,7 @@ describe("Governance", function () {
         await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures)
         expect(await governance.validatorSetHash()).to.be.equal(newGovernanceValidatorSetHash)
         expect(await governance.validatorSetNonce()).to.be.equal(2)
-        expect(await bridge.validatorSetHash()).to.be.equal(newBridgeValidatorSetHash)
+        expect(await bridge.nextValidatorSetHash()).to.be.equal(newBridgeValidatorSetHash)
 
         // invalid bad signatures length
         const signaturesInvalid = await generateSignatures(bridgeSigners, messageHash);
@@ -114,17 +114,17 @@ describe("Governance", function () {
         // invalid signature message
         const messageHashInvalid = generateArbitraryHash(
             ["uint8", "string", "bytes32", "bytes32", "uint256"],
-            [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
+            [2, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
         )
         const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalid);
-        const governanceInvalidValidatorSignatureMessageHash = governance.updateValidatorsSet(newBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidMessageHash)
+        const governanceInvalidValidatorSignatureMessageHash = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidMessageHash)
         await expect(governanceInvalidValidatorSignatureMessageHash).to.be.revertedWith("Unauthorized.")
 
         // invalid signatures
         const signaturesInvalidBad = await generateSignatures(bridgeSigners, messageHash);
         signaturesInvalidBad[3].s = signaturesInvalidBad[0].s;
 
-        const governanceInvalidValidatorSignatureBad = governance.updateValidatorsSet(newBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidBad)
+        const governanceInvalidValidatorSignatureBad = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidBad)
         await expect(governanceInvalidValidatorSignatureBad).to.be.revertedWith("Unauthorized.")
     })
 
