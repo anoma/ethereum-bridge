@@ -13,7 +13,6 @@ cache
 artifacts
 contracts-exposed
 .vscode
-spec
 
 # OSX
 .DS_Store
