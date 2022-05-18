@@ -5,7 +5,7 @@ import "./ICommon.sol";
 
 interface IBridge is ICommon {
     event TransferToNamada(uint256 indexed nonce, address[] froms, uint256[] amounts, string[] tos);
-    event TrasferToECR(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
+    event TrasferToERC(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
 
     function transferToERC(
         ValidatorSetArgs calldata validatorSetArgs,

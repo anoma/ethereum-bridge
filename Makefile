@@ -42,4 +42,4 @@ deps:
 ci:
 	npm ci
 
-.PHONY: build build-prod clean test test-gas test-coverage lint lint-fix deps build-size check size
+.PHONY: check build-prod clean test test-gas test-coverage lint lint-fix deps build-size check ci node benchmark

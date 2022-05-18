@@ -4,6 +4,7 @@ coverage
 coverage.json
 typechain
 *.png
+!benchmarks/images/*.png
 scripts/*.json
 !scripts/state-*.json
 scripts/state-homestead-1.json
@@ -13,7 +14,6 @@ cache
 artifacts
 contracts-exposed
 .vscode
-spec
 
 # OSX
 .DS_Store
