@@ -17,6 +17,8 @@ The smart contracts used to operate the namada bridge on ethereum are:
 - `Bridge.sol`
 - `Hub.sol`
 
-`Hub` smart contract is in chart of keeping track of the existing contract addresses and can be queries by other smart contracts.
+`Hub` smart contract is in charge of keeping track of the existing contract addresses and can be queries by other smart contracts.
+
 `Bridge` is in charge of authorizing tokens the transfers between the chains.
+
 `Governance` functionality is twofold: keep the namada validator set up-to-date and upgrade existing contract to new versions.
