@@ -249,6 +249,7 @@ describe("Bridge", function () {
         const validatorSetHash = await bridge.currentValidatorSetHash();
         const batchNonce = 2;
         const transferAmount = 900;
+        const tos = ["anamadaAddress"]
 
         const preBridgeBalance = await token.balanceOf(bridge.address);
         expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
@@ -282,20 +283,23 @@ describe("Bridge", function () {
 
         await bridge.connect(newWallet).transferToNamada(
             fromAddresses,
-            [transferAmount]
+            [transferAmount],
+            tos
         );
 
         // transfer invalid batch
         const trasferInvalidBatch =  bridge.connect(newWallet).transferToNamada(
             fromAddresses,
-            []
+            [],
+            tos
         );
         await expect(trasferInvalidBatch).to.be.revertedWith("Invalid batch.");
 
         // transfer invalid insufficient amount
         const trasferInvalidInsufficientAmount =  bridge.connect(newWallet).transferToNamada(
             fromAddresses,
-            [1000]
+            [1000],
+            tos
         );
         await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");
     });
