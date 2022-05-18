@@ -93,7 +93,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         }
 
         transferToERC20Nonce = _batchNonce;
-        emit TrasferToECR(transferToERC20Nonce, _froms, _tos, _amounts);
+        emit TrasferToERC(transferToERC20Nonce, _froms, _tos, _amounts);
     }
 
     function transferToNamada(
