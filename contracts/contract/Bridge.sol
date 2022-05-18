@@ -96,7 +96,11 @@ contract Bridge is IBridge, ReentrancyGuard {
         emit TrasferToECR(transferToERC20Nonce, _froms, _tos, _amounts);
     }
 
-    function transferToNamada(address[] calldata _froms, uint256[] calldata _amounts) external nonReentrant {
+    function transferToNamada(
+        address[] calldata _froms,
+        uint256[] calldata _amounts,
+        string[] calldata _tos
+    ) external nonReentrant {
         require(_froms.length == _amounts.length, "Invalid batch.");
 
         uint256[] memory amounts = new uint256[](_amounts.length);
@@ -113,7 +117,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
-        emit TransferToNamada(transferToNamadaNonce, _froms, amounts);
+        emit TransferToNamada(transferToNamadaNonce, _froms, amounts, _tos);
     }
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
