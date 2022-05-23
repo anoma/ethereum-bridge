@@ -43,7 +43,7 @@ describe("Governance", function () {
         governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
         await governance.deployed();
 
-        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, hubAddress);
         await bridge.deployed();
 
         await hub.addContract("governance", governance.address);

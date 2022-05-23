@@ -35,7 +35,7 @@ describe("Bridge", function () {
         hub = await Hub.deploy();
         const hubAddress = hub.address;
  
-        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold, hubAddress);
         await bridge.deployed();
 
         token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
@@ -49,15 +49,15 @@ describe("Bridge", function () {
 
     it("Initialize contract testing", async function () {
         // invalid threshold power 
-        const bridgeInvalidPowerThreshold = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, powerThreshold * 2, hub.address);
+        const bridgeInvalidPowerThreshold = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold * 2, hub.address);
         await expect(bridgeInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2
-        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), powerThreshold, hub.address);
+        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
 
         // mismatch array length 
-        const bridgeInvalidArrayLength = Bridge.deploy(1, validatorsAddresses, [1], validatorsAddresses, [1], powerThreshold, hub.address);
+        const bridgeInvalidArrayLength = Bridge.deploy(1, validatorsAddresses, [1], validatorsAddresses, [1], [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
     });
 

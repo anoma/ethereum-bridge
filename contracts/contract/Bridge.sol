@@ -24,6 +24,8 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
     uint256 private constant MAX_UINT = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
+    mapping(address => uint256) tokenWhiteList;
+
     IHub private hub;
 
     constructor(
@@ -32,11 +34,14 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] memory _currentPowers,
         address[] memory _nextValidators,
         uint256[] memory _nextPowers,
+        address[] memory _tokenList,
+        uint256[] memory _tokenCap,
         uint256 _thresholdVotingPower,
         IHub _hub
     ) {
         require(_currentValidators.length == _currentPowers.length, "Mismatch array length.");
         require(_nextValidators.length == _nextPowers.length, "Mismatch array length.");
+        require(_tokenList.length == _tokenCap.length, "Invalid token whitelist.");
         require(_isEnoughVotingPower(_currentPowers, _thresholdVotingPower), "Invalid voting power threshold.");
         require(_isEnoughVotingPower(_nextPowers, _thresholdVotingPower), "Invalid voting power threshold.");
 
@@ -44,6 +49,13 @@ contract Bridge is IBridge, ReentrancyGuard {
         thresholdVotingPower = _thresholdVotingPower;
         currentValidatorSetHash = computeValidatorSetHash(_currentValidators, _currentPowers, 0);
         nextValidatorSetHash = computeValidatorSetHash(_nextValidators, _nextPowers, 0);
+
+        for (uint256 i = 0; i < _tokenList.length; ++i) {
+            address tokenAddress = _tokenList[i];
+            uint256 tokenCap = _tokenCap[i];
+            tokenWhiteList[tokenAddress] = tokenCap;
+        }
+
         hub = IHub(_hub);
     }
 
@@ -114,6 +126,8 @@ contract Bridge is IBridge, ReentrancyGuard {
             require(postBalance > preBalance, "Invalid transfer.");
 
             amounts[i] = postBalance - preBalance;
+
+            require(tokenWhiteList[_froms[i]] <= postBalance, "Token cap reached.");
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
