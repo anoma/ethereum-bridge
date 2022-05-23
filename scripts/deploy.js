@@ -39,6 +39,13 @@ async function main() {
         return
     }
 
+    const { tokenSupply } = await prompt.get([{
+        name: 'tokenSupply',
+        required: true,
+        description: "Max token ERC20 token supply",
+        type: 'number'
+    }])
+
     const [deployer] = await ethers.getSigners();
     const deployerBalance = await deployer.getBalance();
 
@@ -74,11 +81,12 @@ async function main() {
     const Hub = await ethers.getContractFactory("Hub");
     const Bridge = await ethers.getContractFactory("Bridge");
     const Governance = await ethers.getContractFactory("Governance");
+    const Token = await ethers.getContractFactory("Token");
 
     const hub = await Hub.deploy();
     await hub.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address);
+    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address);
     await bridge.deployed();
 
     const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address);
@@ -89,17 +97,22 @@ async function main() {
 
     await hub.completeContractInit();
 
+    const token = await Token.deploy("Wrapper Namada", "WNAM", tokenSupply, bridge.address);
+    await token.deployed();
+
     console.log("")
     console.log(`Hub address: ${hub.address}`)
     console.log(`Governance address: ${governance.address}`)
     console.log(`Bridge address: ${bridge.address}`)
+    console.log(`Token address: ${token.address}`)
     console.log("")
 
-    await writeState(hub.address, governance.address, bridge.address, hre.network.name, hre.network.config.chainId)
+    await writeState(hub.address, governance.address, bridge.address, token.address, hre.network.name, hre.network.config.chainId)
 
     await etherscan(hub.address, [], hre.network.name);
     await etherscan(governance.address, [1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address], hre.network.name);
     await etherscan(bridge.address, [1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address], hre.network.name);
+    await etherscan(token.address, ["Wrapper Namada", "WNAM", tokenSupply, bridge.address], hre.network.name);
 
     console.log("Running checks...")
     const governanceAddressHub = await hub.getContract("governance")
@@ -110,7 +123,7 @@ async function main() {
     console.log("Looking good!")
 }
 
-const writeState = async (hubAddress, governanceAddress, bridgeAddress, networkName, networkChainId) => {
+const writeState = async (hubAddress, governanceAddress, bridgeAddress, tokenAddress, networkName, networkChainId) => {
     const filePath = `scripts/state-${networkName}-${networkChainId}.json`
     const stateExist = fs.existsSync(filePath)
 
@@ -118,6 +131,7 @@ const writeState = async (hubAddress, governanceAddress, bridgeAddress, networkN
         'hub': hubAddress,
         'governance': governanceAddress,
         'bridge': bridgeAddress,
+        'token': tokenAddress,
         'network': {
             'name': networkName,
             'chainId': networkChainId
