@@ -7,7 +7,7 @@ Useful scripts to manage smart contracts.
 - `deploy.js` can be used to deploy and configure the whole set of smart contract to any chain. The deploy scripts also takes care of verifing contract on EtherScan.
 - `upgrade-bridge.js` can be used to upgrade the bridge smart contract to a new version
 - `upgrade-governance.js` can be used to upgrade the governance smart contract to a new version
-- `fake-data-generator.js` can be used to generate validator set and signatures data
+- `fake-data-generator.js` can be used to generate fake validator set and signatures data
 
 # How to run
 
