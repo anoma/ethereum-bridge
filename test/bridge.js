@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
+const { getContractAddress } = require('@ethersproject/address')
 const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
 
 describe("Bridge", function () {
@@ -9,14 +10,16 @@ describe("Bridge", function () {
     let hub;
     let bridge;
     let token;
+    let notWhitelistedToken;
     let signers;
     let validatorsAddresses;
     let normalizedPowers;
     let powerThreshold;
     let governanceAddr;
-    const maxTokenSupply = 1000000000;
+    const maxTokenSupply = 15000;
 
     beforeEach(async function () {
+        const [owner] = await ethers.getSigners()
         const [_, governanceAddress] = await ethers.getSigners();
         const totalValidators = 125;
         const normalizedThreshold = normalizeThreshold();
@@ -34,14 +37,24 @@ describe("Bridge", function () {
 
         hub = await Hub.deploy();
         const hubAddress = hub.address;
+
+        const transactionCount = await owner.getTransactionCount()
+        const futureTokenAddress = getContractAddress({
+            from: owner.address,
+            nonce: transactionCount + 1
+        })
  
-        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [futureTokenAddress], [14900], powerThreshold, hubAddress);
         await bridge.deployed();
 
         token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
         await token.deployed();
 
+        notWhitelistedToken = await Token.deploy("Token2", "TKN2", maxTokenSupply, bridge.address);
+        await notWhitelistedToken.deployed();
+
         await hub.addContract("governance", governanceAddr.address);
+        await hub.addContract("bridge", bridge.address);
         await hub.completeContractInit();
 
         await network.provider.send("evm_mine")
@@ -53,12 +66,20 @@ describe("Bridge", function () {
         await expect(bridgeInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2
-        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, hub.address);
+        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
+
+        // invalid token cap length
+        const bridgeInvalidTokenCapLength = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [10], powerThreshold, hub.address);
+        await expect(bridgeInvalidTokenCapLength).to.be.revertedWith("Invalid token whitelist.")
 
         // mismatch array length 
         const bridgeInvalidArrayLength = Bridge.deploy(1, validatorsAddresses, [1], validatorsAddresses, [1], [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
+
+        // mismatch array length  2
+        const bridgeInvalidArrayLengthTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, [1], [], [], powerThreshold, hub.address);
+        await expect(bridgeInvalidArrayLengthTwo).to.be.revertedWith("Mismatch array length.");
     });
 
     it("Authorize testing", async function () {
@@ -92,7 +113,7 @@ describe("Bridge", function () {
     it("transferToERC20 testing", async function () {
         const toAddresses = [ethers.Wallet.createRandom().address]
         const fromAddresses = [token.address]
-        const amounts = [10000]
+        const amounts = [200]
         const validatorSetHash = await bridge.currentValidatorSetHash();
         const batchNonce = 1;
 
@@ -243,12 +264,12 @@ describe("Bridge", function () {
 
     it("transferToNamada testing", async function () {
         const [newWallet] = await ethers.getSigners()
-        const toAddresses = [newWallet.address]
-        const fromAddresses = [token.address]
-        const amounts = [10000]
+        const toAddresses = [newWallet.address, newWallet.address]
+        const fromAddresses = [token.address, notWhitelistedToken.address]
+        const amounts = [5000, 5000]
         const validatorSetHash = await bridge.currentValidatorSetHash();
         const batchNonce = 2;
-        const transferAmount = 900;
+        const transferAmount = 500;
         const tos = ["anamadaAddress"]
 
         const preBridgeBalance = await token.balanceOf(bridge.address);
@@ -273,19 +294,39 @@ describe("Bridge", function () {
             amounts,
             batchNonce
         );
+
         const balance = await token.balanceOf(newWallet.address);
         expect(balance).to.be.equal(ethers.BigNumber.from(amounts[0]))
 
         const balanceBridge = await token.balanceOf(bridge.address);
         expect(balanceBridge).to.be.equal(ethers.BigNumber.from(preBridgeBalance - amounts[0]))
 
-        await token.approve(bridge.address, transferAmount)
+        await token.approve(bridge.address, 10000)
+        await notWhitelistedToken.approve(bridge.address, 10000)
 
         await bridge.connect(newWallet).transferToNamada(
-            fromAddresses,
+            [token.address],
+            [4900],
+            tos
+        );
+        
+        // invalid due to non-whitelisted token
+        const trasferInvalidNonWhitelistedToken = bridge.connect(newWallet).transferToNamada(
+            [notWhitelistedToken.address],
             [transferAmount],
             tos
         );
+        await expect(trasferInvalidNonWhitelistedToken).to.be.revertedWith("Token is not whitelisted.")
+
+        const transferInvalidTokenCap = bridge.connect(newWallet).transferToNamada(
+            [token.address],
+            [1],
+            tos
+        );
+
+        await expect(transferInvalidTokenCap).to.be.revertedWith("Token cap reached.")
+        const balanceWallet = await token.balanceOf(newWallet.address);
+        expect(balance - 4900).to.be.equal(balanceWallet)
 
         // transfer invalid batch
         const trasferInvalidBatch =  bridge.connect(newWallet).transferToNamada(
@@ -297,8 +338,8 @@ describe("Bridge", function () {
 
         // transfer invalid insufficient amount
         const trasferInvalidInsufficientAmount =  bridge.connect(newWallet).transferToNamada(
-            fromAddresses,
-            [1000],
+            [token.address],
+            [1000000],
             tos
         );
         await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");

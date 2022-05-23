@@ -127,7 +127,8 @@ contract Bridge is IBridge, ReentrancyGuard {
 
             amounts[i] = postBalance - preBalance;
 
-            require(tokenWhiteList[_froms[i]] <= postBalance, "Token cap reached.");
+            require(tokenWhiteList[_froms[i]] != 0, "Token is not whitelisted.");
+            require(tokenWhiteList[_froms[i]] >= postBalance, "Token cap reached.");
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
@@ -137,6 +138,16 @@ contract Bridge is IBridge, ReentrancyGuard {
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
         currentValidatorSetHash = nextValidatorSetHash;
         nextValidatorSetHash = _validatorSetHash;
+    }
+
+    function updateTokenWhitelist(address[] calldata _tokens, uint256[] calldata _tokensCap)
+        external
+        onlyLatestGovernanceContract
+    {
+        require(_tokens.length == _tokensCap.length, "Invalid inputs.");
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            tokenWhiteList[_tokens[i]] = _tokensCap[i];
+        }
     }
 
     function withdraw(address[] calldata _tokens, address payable _to) external onlyLatestGovernanceContract {
