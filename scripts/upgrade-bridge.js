@@ -24,10 +24,10 @@ async function main() {
         type: 'string'
     }])
 
-    const { newBrideValidatorSetPath } = await prompt.get([{
+    const { nextBrideValidatorSetPath } = await prompt.get([{
         name: 'newBrideValidatorSetPath',
         required: true,
-        description: "Full path to the new bridge validator set json file",
+        description: "Full path to the next bridge validator set json file",
         type: 'string'
     }])
 
@@ -37,6 +37,24 @@ async function main() {
         description: "Full path to the private validator set path",
         type: 'string'
     }])
+
+    const { tokenWhitelistPrompt } = await prompt.get([{
+        name: 'tokenWhitelistPrompt',
+        required: false,
+        description: "Whitelisted token address, comma separated",
+        type: 'string',
+        default: ''
+    }])
+
+    const { tokenCapsPrompt } = await prompt.get([{
+        name: 'tokenCapsPrompt',
+        required: false,
+        description: "Whitelisted token caps, comma separated",
+        type: 'string',
+        default: ''
+    }])
+    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [] : tokenWhitelistPrompt.split(',').map(token => token.trim())
+    const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
 
     if (!isValidJsonFile(currentBrideValidatorSetPath) || !isValidJsonFile(newBrideValidatorSetPath)) {
         return;
@@ -91,7 +109,7 @@ async function main() {
     const bridgeVotingPowers = Object.values(bridgeValidatorSet)
 
     // new bridge constructors parameters
-    const newBridgeValidatorSetContent = fs.readFileSync(newBrideValidatorSetPath)
+    const newBridgeValidatorSetContent = fs.readFileSync(nextBrideValidatorSetPath)
     const newBridgeValidatorSet = JSON.parse(newBridgeValidatorSetContent)
 
     const newBridgeValidators = Object.keys(newBridgeValidatorSet)
@@ -102,7 +120,7 @@ async function main() {
     const Governance = await ethers.getContractFactory("Governance");
     const Hub = await ethers.getContractFactory("Hub");
 
-    const bridge = await Bridge.deploy(contractVersion, newBridgeValidators, newBridgeVotingPowers, newBridgeVotingPowerThreshold, hubAddress);
+    const bridge = await Bridge.deploy(contractVersion, newBridgeValidators, newBridgeVotingPowers, newBridgeValidators, newBridgeVotingPowers, tokenWhitelist, tokenCaps, newBridgeVotingPowerThreshold, hubAddress);
     await bridge.deployed();
 
     const governance = await Governance.attach(governanceAddress)
