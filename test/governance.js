@@ -43,7 +43,7 @@ describe("Governance", function () {
         governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
         await governance.deployed();
 
-        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, hubAddress);
         await bridge.deployed();
 
         await hub.addContract("governance", governance.address);
@@ -82,7 +82,6 @@ describe("Governance", function () {
         
         const currentBridgeValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
         
-        const newBridgeValidatorSetArgs = generateValidatorSetArgs(newValidatorsAddresses, newNormalizedPowers, 1)
         const newBridgeValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
         
         // const newGovernanceValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 1)
@@ -329,5 +328,34 @@ describe("Governance", function () {
         const balanceTokenTwoAfter = await tokenTwo.balanceOf(newContractAddress);
         expect(balanceTokenOneAfter).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
         expect(balanceTokenTwoAfter).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+    })
+
+    it("updateBridgeWhitelist testing", async function () {
+        const randomTokenAddress = ethers.Wallet.createRandom().address
+
+        const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
+        const messageHash = generateArbitraryHash(
+            ["uint8", "string", "address[]", "uint256[]", "uint256"],
+            [1, "updateBridgeWhitelist", [randomTokenAddress], [10000], 0]
+        )
+        const signatures = await generateSignatures(bridgeSigners, messageHash)
+
+        // updateBridgeWhitelist valid
+        await governance.updateBridgeWhitelist(currentValidatorSetArgs, [randomTokenAddress], [10000], signatures)
+
+        // invalid malformed input
+        const currentValidatorSetArgsInvalid = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
+        currentValidatorSetArgsInvalid.validators = []
+        const updateBridgeWhitelistInvalidMalformedInput = governance.updateBridgeWhitelist(currentValidatorSetArgsInvalid, [randomTokenAddress], [10000], signatures)
+        await expect(updateBridgeWhitelistInvalidMalformedInput).to.be.revertedWith('Malformed input.')
+
+        // invalid bad signed message
+        const messageHashInvalid = generateArbitraryHash(
+            ["uint8", "string", "address[]", "uint256[]", "uint256"],
+            [1, "updateBridgeWhitelist", [randomTokenAddress], [10000], 4]
+        )
+        const signaturesInvalid = await generateSignatures(bridgeSigners, messageHashInvalid)
+        const updateBridgeWhitelistInvalidSignatureMessage = governance.updateBridgeWhitelist(currentValidatorSetArgs, [randomTokenAddress], [10000], signaturesInvalid)
+        await expect(updateBridgeWhitelistInvalidSignatureMessage).to.be.revertedWith('Unauthorized.')
     })
 })

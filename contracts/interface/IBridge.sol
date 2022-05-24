@@ -28,6 +28,8 @@ interface IBridge is ICommon {
         bytes32 message
     ) external view returns (bool);
 
+    function updateTokenWhitelist(address[] calldata tokens, uint256[] calldata tokensCap) external;
+
     function withdraw(address[] calldata tokens, address payable to) external;
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external;

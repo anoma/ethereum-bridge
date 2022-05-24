@@ -17,6 +17,7 @@ contract Governance is IGovernance, ReentrancyGuard {
     uint256 public validatorSetNonce = 1;
 
     uint256 public withdrawNonce = 0;
+    uint256 public whitelistNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
@@ -123,6 +124,33 @@ contract Governance is IGovernance, ReentrancyGuard {
         bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
 
         emit ValidatorSetUpdate(validatorSetNonce - 1, _governanceValidatorSetHash, _bridgeValidatorSetHash);
+    }
+
+    function updateBridgeWhitelist(
+        ValidatorSetArgs calldata _currentValidatorSetArgs,
+        address[] calldata _tokens,
+        uint256[] calldata _tokensCap,
+        Signature[] calldata _signatures
+    ) external {
+        require(
+            _currentValidatorSetArgs.validators.length == _currentValidatorSetArgs.powers.length &&
+                _currentValidatorSetArgs.validators.length == _signatures.length,
+            "Malformed input."
+        );
+
+        address bridgeAddress = hub.getContract("bridge");
+        IBridge bridge = IBridge(bridgeAddress);
+
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(version, "updateBridgeWhitelist", _tokens, _tokensCap, whitelistNonce)
+        );
+
+        require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
+
+        whitelistNonce = whitelistNonce + 1;
+        bridge.updateTokenWhitelist(_tokens, _tokensCap);
+
+        emit UpdateBridgeWhitelist(whitelistNonce - 1, _tokens, _tokensCap);
     }
 
     function authorize(

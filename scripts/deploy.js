@@ -24,6 +24,13 @@ async function main() {
         type: 'string'
     }])
 
+    const { brideValidatorNextSetPath } = await prompt.get([{
+        name: 'brideValidatorNextSetPath',
+        required: true,
+        description: "Full path to next bridge validator set json file",
+        type: 'string'
+    }])
+
     const { governanceValidatorSetPath } = await prompt.get([{
         name: 'governanceValidatorSetPath',
         required: true,
@@ -61,6 +68,25 @@ async function main() {
         return;
     }
 
+    const { tokenWhitelistPrompt } = await prompt.get([{
+        name: 'tokenWhitelistPrompt',
+        required: false,
+        description: "Whitelisted token address, comma separated",
+        type: 'string',
+        default: ''
+    }])
+
+    const { tokenCapsPrompt } = await prompt.get([{
+        name: 'tokenCapsPrompt',
+        required: false,
+        description: "Whitelisted token caps, comma separated",
+        type: 'string',
+        default: ''
+    }])
+
+    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [] : tokenWhitelistPrompt.split(',').map(token => token.trim())
+    const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
+
     // bridge constructors parameters
     const bridgeValidatorSetContent = fs.readFileSync(brideValidatorSetPath)
     const bridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
@@ -68,6 +94,17 @@ async function main() {
     const bridgeValidators = Object.keys(bridgeValidatorSet)
     const bridgeVotingPowers = Object.values(bridgeValidatorSet)
     const bridgeVotingPowerThreshold = computeThreshold(bridgeVotingPowers)
+
+    // next bridge contructor parameters
+    const nextBridgeValidatorSetContent = fs.readFileSync(brideValidatorNextSetPath)
+    const nextBridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
+
+    const nextBridgeValidators = Object.keys(bridgeValidatorSet)
+    const nextBridgeVotingPowers = Object.values(bridgeValidatorSet)
+    const nextBridgeVotingPowerThreshold = computeThreshold(bridgeVotingPowers)
+
+    assert(nextBridgeVotingPowerThreshold > bridgeVotingPowerThreshold - 10)
+    assert(nextBridgeVotingPowerThreshold < bridgeVotingPowerThreshold + 10)
 
     // governance constroctor parameters
     const governanceValidatorSetContent = fs.readFileSync(governanceValidatorSetPath)
@@ -77,6 +114,8 @@ async function main() {
     const governanceVotingPowers = Object.values(governanceValidatorSet)
     const governanceVotingPowerThreshold = computeThreshold(governanceVotingPowers)
 
+    assert(governanceVotingPowerThreshold > bridgeVotingPowerThreshold - 10)
+    assert(governanceVotingPowerThreshold < bridgeVotingPowerThreshold + 10)
 
     const Hub = await ethers.getContractFactory("Hub");
     const Bridge = await ethers.getContractFactory("Bridge");
@@ -86,7 +125,7 @@ async function main() {
     const hub = await Hub.deploy();
     await hub.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address);
+    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, nextBridgeValidators, nextBridgeVotingPowers, tokenWhitelist, tokenCaps, bridgeVotingPowerThreshold, hub.address);
     await bridge.deployed();
 
     const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address);

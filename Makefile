@@ -9,7 +9,7 @@ lint-fix:
 	npx solhint 'contracts/**/*.sol' --fix
 	npx prettier --write 'contracts/**/*.sol'
 
-build-prod:
+build:
 	npx hardhat clean
 	RUNS=10000 VIAIR=true npx hardhat compile --force
 
@@ -42,4 +42,4 @@ deps:
 ci:
 	npm ci
 
-.PHONY: check build-prod clean test test-gas test-coverage lint lint-fix deps build-size check ci node benchmark
+.PHONY: check build clean test test-gas test-coverage lint lint-fix deps build-size check ci node benchmark
