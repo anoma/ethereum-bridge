@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.14;
 
 import "../interface/IHub.sol";
 import "../interface/IBridge.sol";
