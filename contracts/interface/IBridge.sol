@@ -4,7 +4,13 @@ pragma solidity ^0.8.13;
 import "./ICommon.sol";
 
 interface IBridge is ICommon {
-    event TransferToNamada(uint256 indexed nonce, address[] froms, uint256[] amounts, string[] tos);
+    event TransferToNamada(
+        uint256 indexed nonce,
+        address[] froms,
+        uint256[] amounts,
+        string[] _tos,
+        uint256 confirmations
+    );
     event TrasferToERC(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
 
     function transferToERC(
@@ -19,7 +25,8 @@ interface IBridge is ICommon {
     function transferToNamada(
         address[] calldata froms,
         uint256[] calldata amounts,
-        string[] calldata tos
+        string[] calldata tos,
+        uint256 confirmations
     ) external;
 
     function authorize(
