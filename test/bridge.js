@@ -271,6 +271,7 @@ describe("Bridge", function () {
         const batchNonce = 2;
         const transferAmount = 500;
         const tos = ["anamadaAddress"]
+        const numberOfConfirmations = 24;
 
         const preBridgeBalance = await token.balanceOf(bridge.address);
         expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
@@ -307,21 +308,24 @@ describe("Bridge", function () {
         await bridge.connect(newWallet).transferToNamada(
             [token.address],
             [4900],
-            tos
+            tos,
+            numberOfConfirmations
         );
         
         // invalid due to non-whitelisted token
         const trasferInvalidNonWhitelistedToken = bridge.connect(newWallet).transferToNamada(
             [notWhitelistedToken.address],
             [transferAmount],
-            tos
+            tos,
+            numberOfConfirmations
         );
         await expect(trasferInvalidNonWhitelistedToken).to.be.revertedWith("Token is not whitelisted.")
 
         const transferInvalidTokenCap = bridge.connect(newWallet).transferToNamada(
             [token.address],
             [1],
-            tos
+            tos,
+            numberOfConfirmations
         );
 
         await expect(transferInvalidTokenCap).to.be.revertedWith("Token cap reached.")
@@ -332,7 +336,8 @@ describe("Bridge", function () {
         const trasferInvalidBatch =  bridge.connect(newWallet).transferToNamada(
             fromAddresses,
             [],
-            tos
+            tos,
+            numberOfConfirmations
         );
         await expect(trasferInvalidBatch).to.be.revertedWith("Invalid batch.");
 
@@ -340,7 +345,8 @@ describe("Bridge", function () {
         const trasferInvalidInsufficientAmount =  bridge.connect(newWallet).transferToNamada(
             [token.address],
             [1000000],
-            tos
+            tos,
+            numberOfConfirmations
         );
         await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");
     });

@@ -111,7 +111,8 @@ contract Bridge is IBridge, ReentrancyGuard {
     function transferToNamada(
         address[] calldata _froms,
         uint256[] calldata _amounts,
-        string[] calldata _tos
+        string[] calldata _tos,
+        uint256 confirmations
     ) external nonReentrant {
         require(_froms.length == _amounts.length, "Invalid batch.");
 
@@ -132,7 +133,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
-        emit TransferToNamada(transferToNamadaNonce, _froms, amounts, _tos);
+        emit TransferToNamada(transferToNamadaNonce, _froms, _tos, amounts, confirmations);
     }
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
