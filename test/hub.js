@@ -26,9 +26,9 @@ describe("Hub", function () {
 
     // invalid lock contract wrong owner
     const lockContractNotOwner = hub.connect(addr1).completeContractInit();
-    await expect(lockContractNotOwner).to.be.revertedWith("Must be called by owner.");
+    await expect(lockContractNotOwner).to.be.reverted;
 
-    // valid lock contract
+    // // valid lock contract
     await hub.completeContractInit();
     expect(await hub.getContract("governance")).to.equal(addr1.address);
 

@@ -20,9 +20,9 @@ jobs:
         id: cache
         with:
           path: '**/node_modules'
-          key: npm-v1-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: npm-v1-
-      - run: make ci
+          key: npm-v2-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-v2-
+      - run: make deps
         if: steps.cache.outputs.cache-hit != 'true'
       - run: make lint
       - run: make node &
@@ -45,9 +45,9 @@ jobs:
         id: cache
         with:
           path: '**/node_modules'
-          key: npm-v1-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: npm-v1-
-      - run: make ci
+          key: npm-v2-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-v2-
+      - run: make deps
         if: steps.cache.outputs.cache-hit != 'true'
       - run: make test-coverage
         env:
@@ -64,9 +64,9 @@ jobs:
         id: cache
         with:
           path: '**/node_modules'
-          key: npm-v1-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: npm-v1-
-      - run: make ci
+          key: npm-v2-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-v2-
+      - run: make deps
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Clean project         
         run: make clean
