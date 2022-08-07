@@ -95,13 +95,15 @@ contract Governance is IGovernance, ReentrancyGuard {
         ValidatorSetArgs calldata _currentValidatorSetArgs,
         bytes32 _bridgeValidatorSetHash,
         bytes32 _governanceValidatorSetHash,
-        Signature[] calldata _signatures
+        Signature[] calldata _signatures,
+        uint256 nonce
     ) external {
         require(
             _currentValidatorSetArgs.validators.length == _currentValidatorSetArgs.powers.length &&
                 _currentValidatorSetArgs.validators.length == _signatures.length,
             "Malformed input."
         );
+        require(nonce > validatorSetNonce && validatorSetNonce + MAX_NONCE_INCREMENT > nonce, "Invalid nonce.");
 
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
@@ -112,16 +114,16 @@ contract Governance is IGovernance, ReentrancyGuard {
                 "updateValidatorsSet",
                 _bridgeValidatorSetHash,
                 _governanceValidatorSetHash,
-                validatorSetNonce
+                nonce
             )
         );
 
         require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 
-        validatorSetNonce = validatorSetNonce + 1;
-
         validatorSetHash = _governanceValidatorSetHash;
         bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
+
+        validatorSetNonce = nonce;
 
         emit ValidatorSetUpdate(validatorSetNonce - 1, _governanceValidatorSetHash, _bridgeValidatorSetHash);
     }

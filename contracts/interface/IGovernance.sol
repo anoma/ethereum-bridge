@@ -39,7 +39,8 @@ interface IGovernance is ICommon {
         ValidatorSetArgs calldata currentValidatorSetArgs,
         bytes32 bridgeValidatorSetHash,
         bytes32 governanceValidatorSetHash,
-        Signature[] calldata signatures
+        Signature[] calldata signatures,
+        uint256 nonce
     ) external;
 
     function updateBridgeWhitelist(

@@ -84,30 +84,29 @@ describe("Governance", function () {
         
         const newBridgeValidatorSetHash = generateValidatorSetHash(newValidatorsAddresses, newNormalizedPowers, 1, "bridge")
         
-        // const newGovernanceValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 1)
         const newGovernanceValidatorSetHash = generateValidatorSetHash(governanceValidatorsAddresses, governanceNormalizedPowers, 1, "governance")
 
         const messageHash = generateArbitraryHash(
             ["uint8", "string", "bytes32", "bytes32", "uint256"],
-            [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 1]
+            [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
         )
 
         const signatures = await generateSignatures(bridgeSigners, messageHash);
 
-        await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures)
+        await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures, 2)
         expect(await governance.validatorSetHash()).to.be.equal(newGovernanceValidatorSetHash)
         expect(await governance.validatorSetNonce()).to.be.equal(2)
         expect(await bridge.nextValidatorSetHash()).to.be.equal(newBridgeValidatorSetHash)
 
         // invalid bad signatures length
         const signaturesInvalid = await generateSignatures(bridgeSigners, messageHash);
-        const governanceInvalidBadSignatureLength = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, [signaturesInvalid[0]])
+        const governanceInvalidBadSignatureLength = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, [signaturesInvalid[0]], 3)
         await expect(governanceInvalidBadSignatureLength).to.be.revertedWith("Malformed input.")
 
         // invalid bad validator input
         const currentBridgeValidatorSetArgsInvalid = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
         currentBridgeValidatorSetArgsInvalid.validators = [currentBridgeValidatorSetArgsInvalid.validators[0]]
-        const governanceInvalidValidatorSet = governance.updateValidatorsSet(currentBridgeValidatorSetArgsInvalid, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, [signaturesInvalid[0]])
+        const governanceInvalidValidatorSet = governance.updateValidatorsSet(currentBridgeValidatorSetArgsInvalid, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, [signaturesInvalid[0]], 3)
         await expect(governanceInvalidValidatorSet).to.be.revertedWith("Malformed input.")
 
         // invalid signature message
@@ -116,14 +115,14 @@ describe("Governance", function () {
             [2, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
         )
         const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalid);
-        const governanceInvalidValidatorSignatureMessageHash = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidMessageHash)
+        const governanceInvalidValidatorSignatureMessageHash = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidMessageHash, 3)
         await expect(governanceInvalidValidatorSignatureMessageHash).to.be.revertedWith("Unauthorized.")
 
         // invalid signatures
         const signaturesInvalidBad = await generateSignatures(bridgeSigners, messageHash);
         signaturesInvalidBad[3].s = signaturesInvalidBad[0].s;
 
-        const governanceInvalidValidatorSignatureBad = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidBad)
+        const governanceInvalidValidatorSignatureBad = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidBad, 3)
         await expect(governanceInvalidValidatorSignatureBad).to.be.revertedWith("Unauthorized.")
     })
 
