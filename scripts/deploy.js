@@ -24,8 +24,8 @@ async function main() {
         type: 'string'
     }])
 
-    const { brideValidatorNextSetPath } = await prompt.get([{
-        name: 'brideValidatorNextSetPath',
+    const { nextBridgeValidatorSetPath } = await prompt.get([{
+        name: 'nextBridgeValidatorSetPath',
         required: true,
         description: "Full path to next bridge validator set json file",
         type: 'string'
@@ -38,11 +38,11 @@ async function main() {
         type: 'string'
     }])
 
-    if (!isValidJsonFile(brideValidatorSetPath) || !isValidJsonFile(governanceValidatorSetPath)) {
+    if (!isValidJsonFile(brideValidatorSetPath) || !isValidJsonFile(nextBridgeValidatorSetPath) || !isValidJsonFile(governanceValidatorSetPath)) {
         return;
     }
 
-    if (!isValidValidatorSet(brideValidatorSetPath) || !isValidValidatorSet(governanceValidatorSetPath)) {
+    if (!isValidValidatorSet(brideValidatorSetPath) || !isValidValidatorSet(nextBridgeValidatorSetPath) | !isValidValidatorSet(governanceValidatorSetPath)) {
         return
     }
 
@@ -96,12 +96,12 @@ async function main() {
     const bridgeVotingPowerThreshold = computeThreshold(bridgeVotingPowers)
 
     // next bridge contructor parameters
-    const nextBridgeValidatorSetContent = fs.readFileSync(brideValidatorNextSetPath)
-    const nextBridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
+    const nextBridgeValidatorSetContent = fs.readFileSync(nextBridgeValidatorSetPath)
+    const nextBridgeValidatorSet = JSON.parse(nextBridgeValidatorSetContent)
 
-    const nextBridgeValidators = Object.keys(bridgeValidatorSet)
-    const nextBridgeVotingPowers = Object.values(bridgeValidatorSet)
-    const nextBridgeVotingPowerThreshold = computeThreshold(bridgeVotingPowers)
+    const nextBridgeValidators = Object.keys(nextBridgeValidatorSet)
+    const nextBridgeVotingPowers = Object.values(nextBridgeValidatorSet)
+    const nextBridgeVotingPowerThreshold = computeThreshold(nextBridgeVotingPowers)
 
     assert(nextBridgeVotingPowerThreshold > bridgeVotingPowerThreshold - 10)
     assert(nextBridgeVotingPowerThreshold < bridgeVotingPowerThreshold + 10)
@@ -236,7 +236,7 @@ async function etherscan(address, constructorArgs, networkName) {
     } catch (e) {
         console.log(e)
     }
-}   
+}
 
 main()
     .then(() => process.exit(0))
