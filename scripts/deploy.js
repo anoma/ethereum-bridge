@@ -84,9 +84,6 @@ async function main() {
         default: ''
     }])
 
-    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [] : tokenWhitelistPrompt.split(',').map(token => token.trim())
-    const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
-
     // bridge constructors parameters
     const bridgeValidatorSetContent = fs.readFileSync(brideValidatorSetPath)
     const bridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
@@ -122,6 +119,12 @@ async function main() {
     const Governance = await ethers.getContractFactory("Governance");
     const Token = await ethers.getContractFactory("Token");
 
+    const token = await Token.deploy("Wrapper Namada", "WNAM", tokenSupply, deployer.address);
+    await token.deployed();
+
+    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [token.address] : tokenWhitelistPrompt.split(',').map(token => token.trim()).concat(token.address)
+    const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
+
     const hub = await Hub.deploy();
     await hub.deployed();
 
@@ -136,8 +139,7 @@ async function main() {
 
     await hub.completeContractInit();
 
-    const token = await Token.deploy("Wrapper Namada", "WNAM", tokenSupply, bridge.address);
-    await token.deployed();
+    await token.transfer(bridge.address, tokenSupply)
 
     console.log("")
     console.log(`Hub address: ${hub.address}`)
