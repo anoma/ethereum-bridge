@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 
 describe("Test", function () {
   it("Test testing", async function () {
-    const [_owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
+    const [_owner] = await ethers.getSigners();
 
     const Test = await ethers.getContractFactory("Test");
     const test = await Test.deploy();
@@ -16,5 +16,8 @@ describe("Test", function () {
     const theList = [0, 128, 256, 10000000011]
     const resList = await test.getListHash(theList);
     console.log(`List [${theList}] is hashed to: ${resList}`)
+
+    const resTest = await test.getTestHash();
+    console.log(`The test is hashed to: ${resTest}`)
   });
 })
