@@ -106,12 +106,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         IBridge bridge = IBridge(bridgeAddress);
 
         bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                "updateValidatorsSet",
-                _bridgeValidatorSetHash,
-                _governanceValidatorSetHash,
-                nonce
-            )
+            abi.encodePacked("updateValidatorsSet", _bridgeValidatorSetHash, _governanceValidatorSetHash, nonce)
         );
 
         validatorSetNonce = nonce;
@@ -139,9 +134,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        bytes32 messageHash = keccak256(
-            abi.encodePacked("updateBridgeWhitelist", _tokens, _tokensCap, whitelistNonce)
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked("updateBridgeWhitelist", _tokens, _tokensCap, whitelistNonce));
 
         require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 

@@ -40,10 +40,10 @@ describe("Governance", function () {
         hub = await Hub.deploy();
         const hubAddress = hub.address;
 
-        governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
+        governance = await Governance.deploy(governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
         await governance.deployed();
 
-        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, hubAddress);
         await bridge.deployed();
 
         await hub.addContract("governance", governance.address);
@@ -56,15 +56,15 @@ describe("Governance", function () {
 
     it("Initialize contract testing", async function () {
         // invalid threshold power 
-        const governanceInvalidPowerThreshold = Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold * 2, hub.address);
+        const governanceInvalidPowerThreshold = Governance.deploy(governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold * 2, hub.address);
         await expect(governanceInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2 
-        const governanceInvalidPowerThresholdTwo = Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers.map(p => Math.floor(p / 2)), powerThreshold, hub.address);
+        const governanceInvalidPowerThresholdTwo = Governance.deploy(governanceValidatorsAddresses, governanceNormalizedPowers.map(p => Math.floor(p / 2)), powerThreshold, hub.address);
         await expect(governanceInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
 
         // mismatch array length 
-        const governanceInvalidArrayLength = Governance.deploy(1, governanceValidatorsAddresses, [1], powerThreshold, hub.address);
+        const governanceInvalidArrayLength = Governance.deploy(governanceValidatorsAddresses, [1], powerThreshold, hub.address);
         await expect(governanceInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
     });
 
@@ -87,8 +87,8 @@ describe("Governance", function () {
         const newGovernanceValidatorSetHash = generateValidatorSetHash(governanceValidatorsAddresses, governanceNormalizedPowers, 1, "governance")
 
         const messageHash = generateArbitraryHash(
-            ["uint8", "string", "bytes32", "bytes32", "uint256"],
-            [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
+            ["string", "bytes32", "bytes32", "uint256"],
+            ["updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
         )
 
         const signatures = await generateSignatures(bridgeSigners, messageHash);
@@ -111,8 +111,8 @@ describe("Governance", function () {
 
         // invalid signature message
         const messageHashInvalid = generateArbitraryHash(
-            ["uint8", "string", "bytes32", "bytes32", "uint256"],
-            [2, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
+            ["string", "bytes32", "bytes32", "uint256"],
+            ["updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
         )
         const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalid);
         const governanceInvalidValidatorSignatureMessageHash = governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signaturesInvalidMessageHash, 3)
@@ -131,8 +131,8 @@ describe("Governance", function () {
         const contractName = "governance"
 
         const messageHash = generateArbitraryHash(
-            ["uint8", "string", "string", "address",],
-            [1, "upgradeContract", contractName, newContractAddress]
+            ["string", "string", "address",],
+            ["upgradeContract", contractName, newContractAddress]
         )
 
         const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
@@ -152,8 +152,8 @@ describe("Governance", function () {
 
         // upgrade contract invalid hash
         const messageHashInvalid = generateArbitraryHash(
-            ["uint8", "string", "string", "address",],
-            [1, "test", contractName, newContractAddress]
+            ["string", "string", "address",],
+            ["test", contractName, newContractAddress]
         )
         const signaturesInvalidHash = await generateSignatures(bridgeSigners, messageHashInvalid);
         const upgradeInvalidHash = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidHash, contractName, newContractAddress)
@@ -174,8 +174,8 @@ describe("Governance", function () {
         const contractName = "new"
 
         const messageHash = generateArbitraryHash(
-            ["uint8", "string", "string", "address"],
-            [1, "addContract", contractName, newContractAddress]
+            ["string", "string", "address"],
+            ["addContract", contractName, newContractAddress]
         );
 
         const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
@@ -187,8 +187,8 @@ describe("Governance", function () {
 
         // invalid add contract invalid message ahsh
         const messageHashInvalidMessageHash = generateArbitraryHash(
-            ["uint8", "string", "string", "address"],
-            [1, "test", contractName, newContractAddress]
+            ["string", "string", "address"],
+            ["test", contractName, newContractAddress]
         );
         const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalidMessageHash);
         const addContractInvalidInvalidMessageHash = governance.addContract(currentValidatorSetArgs, signaturesInvalidMessageHash, contractName, newContractAddress)
@@ -225,8 +225,8 @@ describe("Governance", function () {
         const contractName = "bridge"
 
         const messageHash = generateArbitraryHash(
-            ["uint8", "string", "string", "address"],
-            [1, "upgradeBridgeContract", contractName, newContractAddress]
+            ["string", "string", "address"],
+            ["upgradeBridgeContract", contractName, newContractAddress]
         )
 
         const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
@@ -238,8 +238,8 @@ describe("Governance", function () {
 
         // invalid bridge upgrade bad message hash
         const messageHashInvalid = generateArbitraryHash(
-            ["uint8", "string", "string", "address"],
-            [1, "upgradeBridgeContractInvalid", contractName, newContractAddress]
+            ["string", "string", "address"],
+            ["upgradeBridgeContractInvalid", contractName, newContractAddress]
         )
         const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalid);
         const bridgeUpgradeInvalidMessageHash = governance.upgradeBridgeContract(currentValidatorSetArgs, signaturesInvalidMessageHash, [tokenOne.address, tokenTwo.address], newContractAddress)
@@ -280,8 +280,8 @@ describe("Governance", function () {
 
         const currentValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 0)
         const messageHash = generateArbitraryHash(
-            ["uint8", "string", "address[]", "uint256[]", "uint256", "address", "address[]", "uint256"],
-            [1, "withdraw", currentValidatorSetArgs.validators, currentValidatorSetArgs.powers, currentValidatorSetArgs.nonce, newContractAddress, [tokenOne.address, tokenTwo.address], 0]
+            ["string", "address[]", "uint256[]", "uint256", "address", "address[]", "uint256"],
+            ["withdraw", currentValidatorSetArgs.validators, currentValidatorSetArgs.powers, currentValidatorSetArgs.nonce, newContractAddress, [tokenOne.address, tokenTwo.address], 0]
         )
         const signatures = await generateSignatures(governanceSigners, messageHash)
 
@@ -291,8 +291,8 @@ describe("Governance", function () {
 
         // withdraw invalid message hash
         const messageHashInvalid = generateArbitraryHash(
-            ["uint8", "string", "address[]", "uint256[]", "uint256", "address", "address[]", "uint256"],
-            [1, "withdrawInvalid", currentValidatorSetArgs.validators, currentValidatorSetArgs.powers, currentValidatorSetArgs.nonce, newContractAddress, [tokenOne.address, tokenTwo.address], 0]
+            ["string", "address[]", "uint256[]", "uint256", "address", "address[]", "uint256"],
+            ["withdrawInvalid", currentValidatorSetArgs.validators, currentValidatorSetArgs.powers, currentValidatorSetArgs.nonce, newContractAddress, [tokenOne.address, tokenTwo.address], 0]
         )
         const signaturesInvalidMessageHash = await generateSignatures(governanceSigners, messageHashInvalid)
         const withdrawInvalidMessageHash = governance.withdraw(currentValidatorSetArgs, signaturesInvalidMessageHash, [tokenOne.address, tokenTwo.address], newContractAddress)
@@ -334,8 +334,8 @@ describe("Governance", function () {
 
         const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
         const messageHash = generateArbitraryHash(
-            ["uint8", "string", "address[]", "uint256[]", "uint256"],
-            [1, "updateBridgeWhitelist", [randomTokenAddress], [10000], 0]
+            ["string", "address[]", "uint256[]", "uint256"],
+            ["updateBridgeWhitelist", [randomTokenAddress], [10000], 0]
         )
         const signatures = await generateSignatures(bridgeSigners, messageHash)
 
@@ -350,8 +350,8 @@ describe("Governance", function () {
 
         // invalid bad signed message
         const messageHashInvalid = generateArbitraryHash(
-            ["uint8", "string", "address[]", "uint256[]", "uint256"],
-            [1, "updateBridgeWhitelist", [randomTokenAddress], [10000], 4]
+            ["string", "address[]", "uint256[]", "uint256"],
+            ["updateBridgeWhitelist", [randomTokenAddress], [10000], 4]
         )
         const signaturesInvalid = await generateSignatures(bridgeSigners, messageHashInvalid)
         const updateBridgeWhitelistInvalidSignatureMessage = governance.updateBridgeWhitelist(currentValidatorSetArgs, [randomTokenAddress], [10000], signaturesInvalid)

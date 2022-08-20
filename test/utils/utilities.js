@@ -61,11 +61,11 @@ const generateArbitraryHash = (field, data) => {
 }
 
 const generateValidatorSetHash = (validatorAddreseses, powers, nonce, namespace) => {
-    return generateArbitraryHash(["uint8", "string", "address[]", "uint256[]", "uint256"], [1, namespace, validatorAddreseses, powers, nonce])
+    return generateArbitraryHash(["string", "address[]", "uint256[]", "uint256"], [namespace, validatorAddreseses, powers, nonce])
 }
 
 const generateBatchTransferHash = (froms, tos, amounts, nonce, validatorSetHash, namespace) => {
-    return generateArbitraryHash(["uint8", "string", "address[]", "address[]", "uint256[]", "uint256", "bytes32"], [1, namespace, froms, tos, amounts, nonce, validatorSetHash])
+    return generateArbitraryHash(["string", "address[]", "address[]", "uint256[]", "uint256", "bytes32"], [namespace, froms, tos, amounts, nonce, validatorSetHash])
 }
 
 exports.randomPowers = randomPowers;

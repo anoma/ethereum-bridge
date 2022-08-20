@@ -23,7 +23,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
     uint256 private constant MAX_UINT = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
-    mapping(address => uint256) tokenWhiteList;
+    mapping(address => uint256) private tokenWhiteList;
 
     IHub private hub;
 
@@ -198,12 +198,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
-                    "bridge",
-                    validatorSetArgs.validators,
-                    validatorSetArgs.powers,
-                    validatorSetArgs.nonce
-                )
+                abi.encodePacked("bridge", validatorSetArgs.validators, validatorSetArgs.powers, validatorSetArgs.nonce)
             );
     }
 
@@ -222,10 +217,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] calldata _amounts,
         uint256 _batchNonce
     ) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked("transfer", _froms, _tos, _amounts, _batchNonce, currentValidatorSetHash)
-            );
+        return keccak256(abi.encodePacked("transfer", _froms, _tos, _amounts, _batchNonce, currentValidatorSetHash));
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
