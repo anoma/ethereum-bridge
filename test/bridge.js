@@ -44,7 +44,7 @@ describe("Bridge", function () {
             nonce: transactionCount + 1
         })
  
-        bridge = await Bridge.deploy(validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [futureTokenAddress], [14900], powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [futureTokenAddress], [14900], powerThreshold, hubAddress);
         await bridge.deployed();
 
         token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
@@ -62,23 +62,23 @@ describe("Bridge", function () {
 
     it("Initialize contract testing", async function () {
         // invalid threshold power 
-        const bridgeInvalidPowerThreshold = Bridge.deploy(validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold * 2, hub.address);
+        const bridgeInvalidPowerThreshold = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold * 2, hub.address);
         await expect(bridgeInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2
-        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, hub.address);
+        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid token cap length
-        const bridgeInvalidTokenCapLength = Bridge.deploy(validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [10], powerThreshold, hub.address);
+        const bridgeInvalidTokenCapLength = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [10], powerThreshold, hub.address);
         await expect(bridgeInvalidTokenCapLength).to.be.revertedWith("Invalid token whitelist.")
 
         // mismatch array length 
-        const bridgeInvalidArrayLength = Bridge.deploy(validatorsAddresses, [1], validatorsAddresses, [1], [], [], powerThreshold, hub.address);
+        const bridgeInvalidArrayLength = Bridge.deploy(1, validatorsAddresses, [1], validatorsAddresses, [1], [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
 
         // mismatch array length  2
-        const bridgeInvalidArrayLengthTwo = Bridge.deploy(validatorsAddresses, normalizedPowers, validatorsAddresses, [1], [], [], powerThreshold, hub.address);
+        const bridgeInvalidArrayLengthTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, [1], [], [], powerThreshold, hub.address);
         await expect(bridgeInvalidArrayLengthTwo).to.be.revertedWith("Mismatch array length.");
     });
 

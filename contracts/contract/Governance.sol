@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract Governance is IGovernance, ReentrancyGuard {
+    uint8 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
@@ -23,6 +24,7 @@ contract Governance is IGovernance, ReentrancyGuard {
     IHub private hub;
 
     constructor(
+        uint8 _version,
         address[] memory _validators,
         uint256[] memory _powers,
         uint256 _thresholdVotingPower,
@@ -31,6 +33,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(_validators.length == _powers.length, "Mismatch array length.");
         require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
 
+        version = _version;
         validatorSetHash = computeValidatorSetHash(_validators, _powers, 0);
         thresholdVotingPower = _thresholdVotingPower;
         hub = IHub(_hub);
@@ -45,7 +48,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(_address != address(0), "Invalid address.");
         require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked("bridge")), "Invalid contract name.");
 
-        bytes32 messageHash = keccak256(abi.encodePacked("upgradeContract", _name, _address));
+        bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeContract", _name, _address));
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
@@ -61,7 +64,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         address payable _address
     ) external {
         require(_address != address(0), "Invalid address.");
-        bytes32 messageHash = keccak256(abi.encodePacked("upgradeBridgeContract", "bridge", _address));
+        bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeBridgeContract", "bridge", _address));
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
@@ -78,7 +81,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         address _address
     ) external nonReentrant {
         require(_address != address(0), "Invalid address.");
-        bytes32 messageHash = keccak256(abi.encodePacked("addContract", _name, _address));
+        bytes32 messageHash = keccak256(abi.encodePacked(version, "addContract", _name, _address));
 
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
@@ -106,7 +109,13 @@ contract Governance is IGovernance, ReentrancyGuard {
         IBridge bridge = IBridge(bridgeAddress);
 
         bytes32 messageHash = keccak256(
-            abi.encodePacked("updateValidatorsSet", _bridgeValidatorSetHash, _governanceValidatorSetHash, nonce)
+            abi.encodePacked(
+                version,
+                "updateValidatorsSet",
+                _bridgeValidatorSetHash,
+                _governanceValidatorSetHash,
+                nonce
+            )
         );
 
         validatorSetNonce = nonce;
@@ -134,7 +143,9 @@ contract Governance is IGovernance, ReentrancyGuard {
         address bridgeAddress = hub.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
-        bytes32 messageHash = keccak256(abi.encodePacked("updateBridgeWhitelist", _tokens, _tokensCap, whitelistNonce));
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(version, "updateBridgeWhitelist", _tokens, _tokensCap, whitelistNonce)
+        );
 
         require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 
@@ -208,6 +219,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         return
             keccak256(
                 abi.encodePacked(
+                    version,
                     "withdraw",
                     _validatorSetArgs.validators,
                     _validatorSetArgs.powers,
@@ -219,10 +231,11 @@ contract Governance is IGovernance, ReentrancyGuard {
             );
     }
 
-    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal pure returns (bytes32) {
+    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
+                    version,
                     "governance",
                     validatorSetArgs.validators,
                     validatorSetArgs.powers,
@@ -235,8 +248,8 @@ contract Governance is IGovernance, ReentrancyGuard {
         address[] memory validators,
         uint256[] memory powers,
         uint256 nonce
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("governance", validators, powers, nonce));
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(version, "governance", validators, powers, nonce));
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)

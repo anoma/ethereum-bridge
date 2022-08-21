@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract Bridge is IBridge, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    uint8 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public currentValidatorSetHash;
@@ -23,11 +24,12 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
     uint256 private constant MAX_UINT = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
-    mapping(address => uint256) private tokenWhiteList;
+    mapping(address => uint256) tokenWhiteList;
 
     IHub private hub;
 
     constructor(
+        uint8 _version,
         address[] memory _currentValidators,
         uint256[] memory _currentPowers,
         address[] memory _nextValidators,
@@ -43,6 +45,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         require(_isEnoughVotingPower(_currentPowers, _thresholdVotingPower), "Invalid voting power threshold.");
         require(_isEnoughVotingPower(_nextPowers, _thresholdVotingPower), "Invalid voting power threshold.");
 
+        version = _version;
         thresholdVotingPower = _thresholdVotingPower;
         currentValidatorSetHash = computeValidatorSetHash(_currentValidators, _currentPowers, 0);
         nextValidatorSetHash = computeValidatorSetHash(_nextValidators, _nextPowers, 0);
@@ -195,10 +198,16 @@ contract Bridge is IBridge, ReentrancyGuard {
         return error == ECDSA.RecoverError.NoError && _signer == signer;
     }
 
-    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal pure returns (bytes32) {
+    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked("bridge", validatorSetArgs.validators, validatorSetArgs.powers, validatorSetArgs.nonce)
+                abi.encodePacked(
+                    version,
+                    "bridge",
+                    validatorSetArgs.validators,
+                    validatorSetArgs.powers,
+                    validatorSetArgs.nonce
+                )
             );
     }
 
@@ -207,8 +216,8 @@ contract Bridge is IBridge, ReentrancyGuard {
         address[] memory validators,
         uint256[] memory powers,
         uint256 nonce
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("bridge", validators, powers, nonce));
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(version, "bridge", validators, powers, nonce));
     }
 
     function computeBatchHash(
@@ -217,7 +226,10 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] calldata _amounts,
         uint256 _batchNonce
     ) private view returns (bytes32) {
-        return keccak256(abi.encodePacked("transfer", _froms, _tos, _amounts, _batchNonce, currentValidatorSetHash));
+        return
+            keccak256(
+                abi.encodePacked(version, "transfer", _froms, _tos, _amounts, _batchNonce, currentValidatorSetHash)
+            );
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
