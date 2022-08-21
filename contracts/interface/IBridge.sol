@@ -11,7 +11,7 @@ interface IBridge is ICommon {
         uint256[] amounts,
         uint256 confirmations
     );
-    event TrasferToERC(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
+    event TransferToERC(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
 
     function authorize(
         ValidatorSetArgs calldata validatorSetArgs,
