@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 12.x
+          node-version-file: '.nvmrc'
       - uses: actions/cache@v3
         id: cache
         with:
@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 2
       - uses: actions/setup-node@v3
         with:
-          node-version: 12.x
+          node-version-file: '.nvmrc'
       - uses: actions/cache@v3
         id: cache
         with:
@@ -52,14 +52,14 @@ jobs:
       - run: make test-coverage
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-  
+
   slither:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 12.x
+          node-version-file: '.nvmrc'
       - uses: actions/cache@v3
         id: cache
         with:
@@ -68,6 +68,6 @@ jobs:
           restore-keys: npm-v2-
       - run: make deps
         if: steps.cache.outputs.cache-hit != 'true'
-      - name: Clean project         
+      - name: Clean project
         run: make clean
       - uses: crytic/slither-action@v0.1.1
