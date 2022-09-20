@@ -117,6 +117,7 @@ async function main() {
     const Proxy = await ethers.getContractFactory("Proxy");
     const Bridge = await ethers.getContractFactory("Bridge");
     const Governance = await ethers.getContractFactory("Governance");
+    const Vault = await ethers.getContractFactory("Vault");
     const Token = await ethers.getContractFactory("Token");
 
     const token = await Token.deploy("Wrapper Namada", "WNAM", tokenSupply, deployer.address);
@@ -134,8 +135,12 @@ async function main() {
     const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, proxy.address);
     await governance.deployed()
 
+    const vault = await Vault.deploy(proxy.address);
+    await vault.deployed();
+
     await proxy.addContract("governance", governance.address);
     await proxy.addContract("bridge", bridge.address);
+    await proxy.addContract("vault", vault.address);
 
     await proxy.completeContractInit();
 

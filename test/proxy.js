@@ -11,6 +11,10 @@ describe("Proxy", function () {
 
     expect(await proxy.getContract("governance")).to.equal(ethers.constants.AddressZero);
 
+    // invalid contractc init due to missing governance contract
+    const invalidContractLock = proxy.completeContractInit();
+    await expect(invalidContractLock).to.be.revertedWith("Governance contract must be set.");
+
     // invalid add contract not owner
     const addContractRejectNotOwner = proxy.connect(addr1).addContract("governance", addr1.address);
     await expect(addContractRejectNotOwner).to.be.revertedWith("Caller is not owner.");
