@@ -26,7 +26,7 @@ contract Proxy is IProxy {
 
     function completeContractInit() external {
         require(owner == msg.sender, "Must be called by owner.");
-        
+
         address govenanceAddress = __getContract("governance");
         require(govenanceAddress != address(0), "Governance contract must be set.");
 

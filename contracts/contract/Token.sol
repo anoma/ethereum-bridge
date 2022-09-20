@@ -7,9 +7,13 @@ contract Token is ERC20 {
     constructor(
         string memory name,
         string memory symbol,
-        uint256 initialSupply,
-        address bridgeAddress
+        uint256[] memory initialSupplies,
+        address[] memory addresses
     ) ERC20(name, symbol) {
-        _mint(bridgeAddress, initialSupply);
+        require(initialSupplies.length == addresses.length, "Invalid address/amount parameters.");
+
+        for (uint256 i = 0; i < addresses.length; ++i) {
+            _mint(addresses[i], initialSupplies[i]);
+        }
     }
 }

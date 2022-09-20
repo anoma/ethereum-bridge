@@ -1,4 +1,4 @@
-const { expect } = require("chai");
+const { expect, assert } = require("chai");
 const { ethers, network } = require("hardhat");
 const { getContractAddress } = require('@ethersproject/address')
 const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
@@ -8,6 +8,7 @@ describe("Bridge", function () {
     let Bridge;
     let Token;
     let proxy;
+    let vault;
     let bridge;
     let token;
     let notWhitelistedToken;
@@ -17,6 +18,7 @@ describe("Bridge", function () {
     let powerThreshold;
     let governanceAddr;
     const maxTokenSupply = 15000;
+    const walletTokenAmount = 6000;
 
     beforeEach(async function () {
         const [owner] = await ethers.getSigners()
@@ -34,27 +36,25 @@ describe("Bridge", function () {
         Proxy = await ethers.getContractFactory("Proxy");
         Bridge = await ethers.getContractFactory("Bridge");
         Token = await ethers.getContractFactory("Token");
+        Vault = await ethers.getContractFactory("Vault");
 
         proxy = await Proxy.deploy();
-        const proxyAddress = proxy.address;
 
-        const transactionCount = await owner.getTransactionCount()
-        const futureTokenAddress = getContractAddress({
-            from: owner.address,
-            nonce: transactionCount + 1
-        })
- 
-        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [futureTokenAddress], [14900], powerThreshold, proxyAddress);
-        await bridge.deployed();
+        vault = await Vault.deploy(proxy.address);
+        await vault.deployed();
 
-        token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
+        token = await Token.deploy("Token", "TKN", [maxTokenSupply, walletTokenAmount], [vault.address, owner.address]);
         await token.deployed();
 
-        notWhitelistedToken = await Token.deploy("Token2", "TKN2", maxTokenSupply, bridge.address);
+        notWhitelistedToken = await Token.deploy("Token2", "TKN2", [maxTokenSupply, walletTokenAmount], [vault.address, owner.address]);
         await notWhitelistedToken.deployed();
+
+        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [token.address], [14900], powerThreshold, proxy.address);
+        await bridge.deployed();
 
         await proxy.addContract("governance", governanceAddr.address);
         await proxy.addContract("bridge", bridge.address);
+        await proxy.addContract("vault", vault.address);
         await proxy.completeContractInit();
 
         await network.provider.send("evm_mine")
@@ -273,70 +273,55 @@ describe("Bridge", function () {
         const tos = ["anamadaAddress"]
         const numberOfConfirmations = 24;
 
-        const preBridgeBalance = await token.balanceOf(bridge.address);
+        const preBridgeBalance = await token.balanceOf(vault.address);
         expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
 
-        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-        const messageHash = generateBatchTransferHash(
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce,
-            validatorSetHash,
-            "transfer"
-        );
-        const signatures = await generateSignatures(signers, messageHash);
-
-        await bridge.transferToERC(
-            currentValidatorSetArgs,
-            signatures,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce
-        );
-
-        const balance = await token.balanceOf(newWallet.address);
-        expect(balance).to.be.equal(ethers.BigNumber.from(amounts[0]))
-
-        const balanceBridge = await token.balanceOf(bridge.address);
-        expect(balanceBridge).to.be.equal(ethers.BigNumber.from(preBridgeBalance - amounts[0]))
-
-        await token.approve(bridge.address, 10000)
-        await notWhitelistedToken.approve(bridge.address, 10000)
-
+        const preNewWalletTokenBalance = await token.balanceOf(newWallet.address)
+        expect(preNewWalletTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
+        
+        await token.connect(newWallet).approve(bridge.address, 6000)
         await bridge.connect(newWallet).transferToNamada(
             [token.address],
-            [4900],
             tos,
+            [5900],
             numberOfConfirmations
         );
+
+        const updatedNewWalletbalance = await token.balanceOf(newWallet.address);
+        expect(updatedNewWalletbalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
+
+        const updatedVaultBalance = await token.balanceOf(vault.address);
+        expect(updatedVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
         
         // invalid due to non-whitelisted token
         const trasferInvalidNonWhitelistedToken = bridge.connect(newWallet).transferToNamada(
             [notWhitelistedToken.address],
-            [transferAmount],
             tos,
+            [transferAmount],
             numberOfConfirmations
         );
+
         await expect(trasferInvalidNonWhitelistedToken).to.be.revertedWith("Token is not whitelisted.")
+
+        const nonWhitelistedTokenBalance = await notWhitelistedToken.balanceOf(newWallet.address);
+        expect(nonWhitelistedTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
 
         const transferInvalidTokenCap = bridge.connect(newWallet).transferToNamada(
             [token.address],
-            [1],
             tos,
+            [15000],
             numberOfConfirmations
         );
-
         await expect(transferInvalidTokenCap).to.be.revertedWith("Token cap reached.")
-        const balanceWallet = await token.balanceOf(newWallet.address);
-        expect(balance - 4900).to.be.equal(balanceWallet)
+        
+        const updatedNewWalletbalanceAfterInvalidTokenCap = await token.balanceOf(newWallet.address);
+        expect(updatedNewWalletbalanceAfterInvalidTokenCap).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
 
         // transfer invalid batch
         const trasferInvalidBatch =  bridge.connect(newWallet).transferToNamada(
             fromAddresses,
-            [],
             tos,
+            [],
             numberOfConfirmations
         );
         await expect(trasferInvalidBatch).to.be.revertedWith("Invalid batch.");
@@ -344,11 +329,25 @@ describe("Bridge", function () {
         // transfer invalid insufficient amount
         const trasferInvalidInsufficientAmount =  bridge.connect(newWallet).transferToNamada(
             [token.address],
-            [1000000],
             tos,
+            [200],
             numberOfConfirmations
         );
         await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");
+
+        // valid 
+        await bridge.connect(newWallet).transferToNamada(
+            [token.address],
+            tos,
+            [100],
+            numberOfConfirmations
+        );
+
+        const updatedNewWalletbalanceAfterValidTrasfer = await token.balanceOf(newWallet.address);
+        expect(updatedNewWalletbalanceAfterValidTrasfer).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900 - 100))
+
+        const updatedVaultBalanceAfterTransfer = await token.balanceOf(vault.address);
+        expect(updatedVaultBalanceAfterTransfer).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900 + 100))
     });
 
     it("withdraw testing", async function () {

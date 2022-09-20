@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../interface/IBridge.sol";
 import "../interface/IProxy.sol";
+import "../interface/IVault.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -110,26 +111,27 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     function transferToNamada(
         address[] calldata _froms,
-        uint256[] calldata _amounts,
         string[] calldata _tos,
+        uint256[] calldata _amounts,
         uint256 confirmations
     ) external nonReentrant {
         require(_froms.length == _amounts.length, "Invalid batch.");
 
         uint256[] memory amounts = new uint256[](_amounts.length);
+        address vaultAddress = proxy.getContract("vault");
 
         for (uint256 i = 0; i < _amounts.length; ++i) {
-            uint256 preBalance = IERC20(_froms[i]).balanceOf(address(this));
+            require(tokenWhiteList[_froms[i]] != 0, "Token is not whitelisted.");
+            require(tokenWhiteList[_froms[i]] >= _amounts[i], "Token cap reached.");
 
-            IERC20(_froms[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+            uint256 preBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
 
-            uint256 postBalance = IERC20(_froms[i]).balanceOf(address(this));
+            IERC20(_froms[i]).safeTransferFrom(msg.sender, vaultAddress, _amounts[i]);
+
+            uint256 postBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
             require(postBalance > preBalance, "Invalid transfer.");
 
             amounts[i] = postBalance - preBalance;
-
-            require(tokenWhiteList[_froms[i]] != 0, "Token is not whitelisted.");
-            require(tokenWhiteList[_froms[i]] >= postBalance, "Token cap reached.");
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
