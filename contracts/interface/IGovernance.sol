@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.15;
 
-import "../interface/IHub.sol";
+import "../interface/IProxy.sol";
 import "../interface/ICommon.sol";
 
 interface IGovernance is ICommon {

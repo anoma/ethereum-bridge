@@ -114,7 +114,7 @@ async function main() {
     assert(governanceVotingPowerThreshold > bridgeVotingPowerThreshold - 10)
     assert(governanceVotingPowerThreshold < bridgeVotingPowerThreshold + 10)
 
-    const Hub = await ethers.getContractFactory("Hub");
+    const Proxy = await ethers.getContractFactory("Proxy");
     const Bridge = await ethers.getContractFactory("Bridge");
     const Governance = await ethers.getContractFactory("Governance");
     const Token = await ethers.getContractFactory("Token");
@@ -125,51 +125,51 @@ async function main() {
     const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [token.address] : tokenWhitelistPrompt.split(',').map(token => token.trim()).concat(token.address)
     const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
 
-    const hub = await Hub.deploy();
-    await hub.deployed();
+    const proxy = await Proxy.deploy();
+    await proxy.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, nextBridgeValidators, nextBridgeVotingPowers, tokenWhitelist, tokenCaps, bridgeVotingPowerThreshold, hub.address);
+    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, nextBridgeValidators, nextBridgeVotingPowers, tokenWhitelist, tokenCaps, bridgeVotingPowerThreshold, proxy.address);
     await bridge.deployed();
 
-    const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address);
+    const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, proxy.address);
     await governance.deployed()
 
-    await hub.addContract("governance", governance.address);
-    await hub.addContract("bridge", bridge.address);
+    await proxy.addContract("governance", governance.address);
+    await proxy.addContract("bridge", bridge.address);
 
-    await hub.completeContractInit();
+    await proxy.completeContractInit();
 
     await token.transfer(bridge.address, tokenSupply)
 
     console.log("")
-    console.log(`Hub address: ${hub.address}`)
+    console.log(`Proxy address: ${proxy.address}`)
     console.log(`Governance address: ${governance.address}`)
     console.log(`Bridge address: ${bridge.address}`)
     console.log(`Token address: ${token.address}`)
     console.log("")
 
-    await writeState(hub.address, governance.address, bridge.address, token.address, hre.network.name, hre.network.config.chainId)
+    await writeState(proxy.address, governance.address, bridge.address, token.address, hre.network.name, hre.network.config.chainId)
 
-    await etherscan(hub.address, [], hre.network.name);
-    await etherscan(governance.address, [1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, hub.address], hre.network.name);
-    await etherscan(bridge.address, [1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, hub.address], hre.network.name);
+    await etherscan(proxy.address, [], hre.network.name);
+    await etherscan(governance.address, [1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, proxy.address], hre.network.name);
+    await etherscan(bridge.address, [1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, proxy.address], hre.network.name);
     await etherscan(token.address, ["Wrapper Namada", "WNAM", tokenSupply, bridge.address], hre.network.name);
 
     console.log("Running checks...")
-    const governanceAddressHub = await hub.getContract("governance")
-    const bridgeAddressHub = await hub.getContract("bridge")
+    const governanceAddressProxy = await proxy.getContract("governance")
+    const bridgeAddressProxy = await proxy.getContract("bridge")
 
-    assert(governanceAddressHub == governance.address)
-    assert(bridgeAddressHub == bridge.address)
+    assert(governanceAddressProxy == governance.address)
+    assert(bridgeAddressProxy == bridge.address)
     console.log("Looking good!")
 }
 
-const writeState = async (hubAddress, governanceAddress, bridgeAddress, tokenAddress, networkName, networkChainId) => {
+const writeState = async (proxyAddress, governanceAddress, bridgeAddress, tokenAddress, networkName, networkChainId) => {
     const filePath = `scripts/state-${networkName}-${networkChainId}.json`
     const stateExist = fs.existsSync(filePath)
 
     const stateContent = JSON.stringify({
-        'hub': hubAddress,
+        'proxy': proxyAddress,
         'governance': governanceAddress,
         'bridge': bridgeAddress,
         'token': tokenAddress,

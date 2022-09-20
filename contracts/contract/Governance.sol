@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.15;
 
-import "../interface/IHub.sol";
+import "../interface/IProxy.sol";
 import "../interface/IBridge.sol";
 import "../interface/IGovernance.sol";
 import "../interface/ICommon.sol";
@@ -21,14 +21,14 @@ contract Governance is IGovernance, ReentrancyGuard {
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
-    IHub private hub;
+    IProxy private proxy;
 
     constructor(
         uint8 _version,
         address[] memory _validators,
         uint256[] memory _powers,
         uint256 _thresholdVotingPower,
-        IHub _hub
+        IProxy _proxy
     ) {
         require(_validators.length == _powers.length, "Mismatch array length.");
         require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
@@ -36,7 +36,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         version = _version;
         validatorSetHash = computeValidatorSetHash(_validators, _powers, 0);
         thresholdVotingPower = _thresholdVotingPower;
-        hub = IHub(_hub);
+        proxy = IProxy(_proxy);
     }
 
     function upgradeContract(
@@ -49,12 +49,12 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked("bridge")), "Invalid contract name.");
 
         bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeContract", _name, _address));
-        address bridgeAddress = hub.getContract("bridge");
+        address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
-        hub.upgradeContract(_name, _address);
+        proxy.upgradeContract(_name, _address);
     }
 
     function upgradeBridgeContract(
@@ -65,12 +65,12 @@ contract Governance is IGovernance, ReentrancyGuard {
     ) external {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeBridgeContract", "bridge", _address));
-        address bridgeAddress = hub.getContract("bridge");
+        address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
-        hub.upgradeContract("bridge", _address);
+        proxy.upgradeContract("bridge", _address);
         bridge.withdraw(_tokens, _address);
     }
 
@@ -83,12 +83,12 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(abi.encodePacked(version, "addContract", _name, _address));
 
-        address bridgeAddress = hub.getContract("bridge");
+        address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
-        hub.addContract(_name, _address);
+        proxy.addContract(_name, _address);
     }
 
     function updateValidatorsSet(
@@ -105,7 +105,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         );
         require(nonce > validatorSetNonce && validatorSetNonce + MAX_NONCE_INCREMENT > nonce, "Invalid nonce.");
 
-        address bridgeAddress = hub.getContract("bridge");
+        address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         bytes32 messageHash = keccak256(
@@ -140,7 +140,7 @@ contract Governance is IGovernance, ReentrancyGuard {
             "Malformed input."
         );
 
-        address bridgeAddress = hub.getContract("bridge");
+        address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         bytes32 messageHash = keccak256(
@@ -190,7 +190,7 @@ contract Governance is IGovernance, ReentrancyGuard {
 
         withdrawNonce = withdrawNonce + 1;
 
-        address bridgeAddress = hub.getContract("bridge");
+        address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
 
         bridge.withdraw(_tokens, _to);

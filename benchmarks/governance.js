@@ -13,23 +13,23 @@ const updateValidatorSetBenchmarkLadder = async function (index) {
     const governanceValidatorsAddresses = getSignersAddresses(governanceSigners);
     const governanceNormalizedPowers = normalizePowers(powers);
 
-    const Hub = await ethers.getContractFactory("Hub");
+    const Proxy = await ethers.getContractFactory("Proxy");
     const Governance = await ethers.getContractFactory("Governance");
     const Bridge = await ethers.getContractFactory("Bridge");
 
-    const hub = await Hub.deploy();
-    const hubAddress = hub.address;
+    const proxy = await Proxy.deploy();
+    const proxyAddress = proxy.address;
 
-    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
+    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxyAddress);
     await governance.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
+    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, proxyAddress);
     await bridge.deployed();
 
-    await hub.addContract("governance", governance.address);
-    await hub.addContract("bridge", bridge.address);
+    await proxy.addContract("governance", governance.address);
+    await proxy.addContract("bridge", bridge.address);
 
-    await hub.completeContractInit();
+    await proxy.completeContractInit();
 
     await network.provider.send("evm_mine")
 
@@ -74,23 +74,23 @@ const updateValidatorSetBenchmarkFixed = async function (index) {
     const governanceValidatorsAddresses = getSignersAddresses(governanceSigners);
     const governanceNormalizedPowers = normalizePowers(powers);
 
-    const Hub = await ethers.getContractFactory("Hub");
+    const Proxy = await ethers.getContractFactory("Proxy");
     const Governance = await ethers.getContractFactory("Governance");
     const Bridge = await ethers.getContractFactory("Bridge");
 
-    const hub = await Hub.deploy();
-    const hubAddress = hub.address;
+    const proxy = await Proxy.deploy();
+    const proxyAddress = proxy.address;
 
-    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
+    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxyAddress);
     await governance.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, hubAddress);
+    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, proxyAddress);
     await bridge.deployed();
 
-    await hub.addContract("governance", governance.address);
-    await hub.addContract("bridge", bridge.address);
+    await proxy.addContract("governance", governance.address);
+    await proxy.addContract("bridge", bridge.address);
 
-    await hub.completeContractInit();
+    await proxy.completeContractInit();
 
     await network.provider.send("evm_mine")
 
