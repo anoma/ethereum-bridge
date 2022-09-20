@@ -2,7 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "../interface/IBridge.sol";
-import "../interface/IHub.sol";
+import "../interface/IProxy.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -26,7 +26,7 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     mapping(address => uint256) tokenWhiteList;
 
-    IHub private hub;
+    IProxy private proxy;
 
     constructor(
         uint8 _version,
@@ -37,7 +37,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         address[] memory _tokenList,
         uint256[] memory _tokenCap,
         uint256 _thresholdVotingPower,
-        IHub _hub
+        IProxy _proxy
     ) {
         require(_currentValidators.length == _currentPowers.length, "Mismatch array length.");
         require(_nextValidators.length == _nextPowers.length, "Mismatch array length.");
@@ -56,7 +56,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             tokenWhiteList[tokenAddress] = tokenCap;
         }
 
-        hub = IHub(_hub);
+        proxy = IProxy(_proxy);
     }
 
     function authorize(
@@ -271,7 +271,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     modifier onlyLatestGovernanceContract() {
-        address governanceAddress = hub.getContract("governance");
+        address governanceAddress = proxy.getContract("governance");
         require(msg.sender == governanceAddress, "Invalid caller.");
         _;
     }

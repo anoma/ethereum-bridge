@@ -53,10 +53,10 @@ async function main() {
         type: 'string'
     }])
 
-    const { hubAddress } = await prompt.get([{
-        name: 'hubAddress',
+    const { proxyAddress } = await prompt.get([{
+        name: 'proxyAddress',
         required: true,
-        description: "Hub contract address",
+        description: "Proxy contract address",
         type: 'string'
     }])
 
@@ -91,9 +91,9 @@ async function main() {
     const newGovernanceVotingPowerThreshold = computeThreshold(newGovernanceVotingPowers)
 
     const Governance = await ethers.getContractFactory("Governance");
-    const Hub = await ethers.getContractFactory("Hub");
+    const Proxy = await ethers.getContractFactory("Proxy");
 
-    const governanceNew = await Governance.deploy(contractVersion, newGovernanceValidators, newGovernanceVotingPowers, newGovernanceVotingPowerThreshold, hubAddress);
+    const governanceNew = await Governance.deploy(contractVersion, newGovernanceValidators, newGovernanceVotingPowers, newGovernanceVotingPowerThreshold, proxyAddress);
     await governanceNew.deployed();
 
     const governance = await Governance.attach(governanceAddress)
@@ -120,10 +120,10 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 10000));
 
     console.log("Running checks...")
-    const hub = await Hub.attach(hubAddress)
-    const governanceAddressHub = await hub.getContract("governance")
+    const proxy = await Proxy.attach(proxyAddress)
+    const governanceAddressProxy = await proxy.getContract("governance")
 
-    assert(governanceAddressHub == governanceNew.address)
+    assert(governanceAddressProxy == governanceNew.address)
     console.log("Looking good!")
 }
 

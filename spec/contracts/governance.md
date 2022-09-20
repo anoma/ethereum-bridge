@@ -7,18 +7,18 @@
 # Functions
 
 ## upgradeContract
-This function is used to upgrade a contract address. The upgrades is done by calling the `upgradeContract` function of the `Hub` smart contract with the contract name and the new address as arguments. Before calling the `Hub` contract, the following checks are done:
+This function is used to upgrade a contract address. The upgrades is done by calling the `upgradeContract` function of the `Proxy` smart contract with the contract name and the new address as arguments. Before calling the `Proxy` contract, the following checks are done:
 - The new address must be different than the zero address
 - The contract name to be updated must be different from `bridge`
 - More than 2/3 of the voting power have to sign a specific message
 
 ## upgradeBridgeContract
-This function is used to upgrade the `bridge` contract address. The upgrades is done by calling the `upgradeContract` function of the `Hub` smart contract with `bridge` as first argument and the new bridge contract address as second. Before calling the `Hub` contract, the following checks are done:
+This function is used to upgrade the `bridge` contract address. The upgrades is done by calling the `upgradeContract` function of the `Proxy` smart contract with `bridge` as first argument and the new bridge contract address as second. Before calling the `Proxy` contract, the following checks are done:
 - The new address must be different than the zero address
 - More than 2/3 of the voting power have to sign a specific message
 
 ## addContract
-This function is used to add a new contract to the `Hub`. The upgrades is done by calling the `addContract` function of the `Hub` smart contract with the contract name and the new address as arguments. Before calling the `Hub` contract, the following checks are done:
+This function is used to add a new contract to the `Proxy`. The upgrades is done by calling the `addContract` function of the `Proxy` smart contract with the contract name and the new address as arguments. Before calling the `Proxy` contract, the following checks are done:
 - The new address must be different than the zero address
 - More than 2/3 of the voting power have to sign a specific message
 

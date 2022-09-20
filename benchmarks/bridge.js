@@ -12,21 +12,21 @@ const trasferToERC20 = async function (index) {
     const normalizedPowers = normalizePowers(powers);
     const powerThreshold = computeThreshold(normalizedThreshold);
 
-    const Hub = await ethers.getContractFactory("Hub");
+    const Proxy = await ethers.getContractFactory("Proxy");
     const Bridge = await ethers.getContractFactory("Bridge");
     const Token = await ethers.getContractFactory("Token");
 
-    const hub = await Hub.deploy();
-    const hubAddress = hub.address;
+    const proxy = await Proxy.deploy();
+    const proxyAddress = proxy.address;
 
-    const bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, powerThreshold, hubAddress);
+    const bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, powerThreshold, proxyAddress);
     await bridge.deployed();
 
     const token = await Token.deploy("Token", "TKN", 1000000000, bridge.address);
     await token.deployed();
 
-    await hub.addContract("governance", governanceAddress.address);
-    await hub.completeContractInit();
+    await proxy.addContract("governance", governanceAddress.address);
+    await proxy.completeContractInit();
 
     await network.provider.send("evm_mine")
 

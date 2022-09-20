@@ -3,10 +3,10 @@ const { ethers } = require("hardhat");
 const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash } = require("./utils/utilities")
 
 describe("Governance", function () {
-    let Hub;
+    let Proxy;
     let Governance;
     let Bridge;
-    let hub;
+    let proxy;
     let governance;
     let bridge;
     let bridgeSigners;
@@ -33,38 +33,38 @@ describe("Governance", function () {
         expect(powerThreshold).to.be.greaterThan(computeThreshold(normalizedThreshold) - 10);
         expect(powerThreshold).to.be.lessThan(computeThreshold(normalizedThreshold) + 10);
 
-        Hub = await ethers.getContractFactory("Hub");
+        Proxy = await ethers.getContractFactory("Proxy");
         Governance = await ethers.getContractFactory("Governance");
         Bridge = await ethers.getContractFactory("Bridge");
 
-        hub = await Hub.deploy();
-        const hubAddress = hub.address;
+        proxy = await Proxy.deploy();
+        const proxyAddress = proxy.address;
 
-        governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, hubAddress);
+        governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxyAddress);
         await governance.deployed();
 
-        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, proxyAddress);
         await bridge.deployed();
 
-        await hub.addContract("governance", governance.address);
-        await hub.addContract("bridge", bridge.address);
+        await proxy.addContract("governance", governance.address);
+        await proxy.addContract("bridge", bridge.address);
 
-        await hub.completeContractInit();
+        await proxy.completeContractInit();
 
         await network.provider.send("evm_mine")
     });
 
     it("Initialize contract testing", async function () {
         // invalid threshold power 
-        const governanceInvalidPowerThreshold = Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold * 2, hub.address);
+        const governanceInvalidPowerThreshold = Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold * 2, proxy.address);
         await expect(governanceInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2 
-        const governanceInvalidPowerThresholdTwo = Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers.map(p => Math.floor(p / 2)), powerThreshold, hub.address);
+        const governanceInvalidPowerThresholdTwo = Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers.map(p => Math.floor(p / 2)), powerThreshold, proxy.address);
         await expect(governanceInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
 
         // mismatch array length 
-        const governanceInvalidArrayLength = Governance.deploy(1, governanceValidatorsAddresses, [1], powerThreshold, hub.address);
+        const governanceInvalidArrayLength = Governance.deploy(1, governanceValidatorsAddresses, [1], powerThreshold, proxy.address);
         await expect(governanceInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
     });
 
@@ -139,7 +139,7 @@ describe("Governance", function () {
         const signatures = await generateSignatures(bridgeSigners, messageHash);
         await governance.upgradeContract(currentValidatorSetArgs, signatures, contractName, newContractAddress)
 
-        const newAddress = await hub.getContract(contractName);
+        const newAddress = await proxy.getContract(contractName);
         expect(newAddress).to.be.equal(newContractAddress);
 
         // upgrade contract invalid zero address
@@ -165,7 +165,7 @@ describe("Governance", function () {
         const upgradeInvalidSignatures = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
         await expect(upgradeInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
-        const newAddressCheck = await hub.getContract(contractName);
+        const newAddressCheck = await proxy.getContract(contractName);
         expect(newAddressCheck).to.be.equal(newContractAddress);
     });
 
@@ -202,13 +202,13 @@ describe("Governance", function () {
         const addContractInvalidInvalidSignatures = governance.addContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
         await expect(addContractInvalidInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
-        const newAddressInvalid = await hub.getContract(contractName);
+        const newAddressInvalid = await proxy.getContract(contractName);
         expect(newAddressInvalid).to.be.equal(ethers.constants.AddressZero);
 
         // valid 
         await governance.addContract(currentValidatorSetArgs, signatures, contractName, newContractAddress)
 
-        const newAddress = await hub.getContract(contractName);
+        const newAddress = await proxy.getContract(contractName);
         expect(newAddress).to.be.equal(newContractAddress);
     });
 

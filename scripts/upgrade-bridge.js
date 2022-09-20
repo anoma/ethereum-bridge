@@ -71,10 +71,10 @@ async function main() {
         type: 'string'
     }])
 
-    const { hubAddress } = await prompt.get([{
-        name: 'hubAddress',
+    const { proxyAddress } = await prompt.get([{
+        name: 'proxyAddress',
         required: true,
-        description: "Hub contract address",
+        description: "Proxy contract address",
         type: 'string'
     }])
 
@@ -118,9 +118,9 @@ async function main() {
 
     const Bridge = await ethers.getContractFactory("Bridge");
     const Governance = await ethers.getContractFactory("Governance");
-    const Hub = await ethers.getContractFactory("Hub");
+    const Proxy = await ethers.getContractFactory("Proxy");
 
-    const bridge = await Bridge.deploy(contractVersion, newBridgeValidators, newBridgeVotingPowers, newBridgeValidators, newBridgeVotingPowers, tokenWhitelist, tokenCaps, newBridgeVotingPowerThreshold, hubAddress);
+    const bridge = await Bridge.deploy(contractVersion, newBridgeValidators, newBridgeVotingPowers, newBridgeValidators, newBridgeVotingPowers, tokenWhitelist, tokenCaps, newBridgeVotingPowerThreshold, proxyAddress);
     await bridge.deployed();
 
     const governance = await Governance.attach(governanceAddress)
@@ -147,12 +147,12 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 10000));
 
     console.log("Running checks...")
-    const hub = await Hub.attach(hubAddress)
-    const governanceAddressHub = await hub.getContract("governance")
-    const bridgeAddressHub = await hub.getContract("bridge")
+    const proxy = await Proxy.attach(proxyAddress)
+    const governanceAddressProxy = await proxy.getContract("governance")
+    const bridgeAddressProxy = await proxy.getContract("bridge")
 
-    assert(governanceAddressHub == governanceAddress)
-    assert(bridgeAddressHub == bridge.address)
+    assert(governanceAddressProxy == governanceAddress)
+    assert(bridgeAddressProxy == bridge.address)
     console.log("Looking good!")
 }
 

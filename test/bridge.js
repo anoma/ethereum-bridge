@@ -4,10 +4,10 @@ const { getContractAddress } = require('@ethersproject/address')
 const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
 
 describe("Bridge", function () {
-    let Hub;
+    let Proxy;
     let Bridge;
     let Token;
-    let hub;
+    let proxy;
     let bridge;
     let token;
     let notWhitelistedToken;
@@ -31,12 +31,12 @@ describe("Bridge", function () {
         normalizedPowers = normalizePowers(powers);
         powerThreshold = computeThreshold(normalizedThreshold);
 
-        Hub = await ethers.getContractFactory("Hub");
+        Proxy = await ethers.getContractFactory("Proxy");
         Bridge = await ethers.getContractFactory("Bridge");
         Token = await ethers.getContractFactory("Token");
 
-        hub = await Hub.deploy();
-        const hubAddress = hub.address;
+        proxy = await Proxy.deploy();
+        const proxyAddress = proxy.address;
 
         const transactionCount = await owner.getTransactionCount()
         const futureTokenAddress = getContractAddress({
@@ -44,7 +44,7 @@ describe("Bridge", function () {
             nonce: transactionCount + 1
         })
  
-        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [futureTokenAddress], [14900], powerThreshold, hubAddress);
+        bridge = await Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [futureTokenAddress], [14900], powerThreshold, proxyAddress);
         await bridge.deployed();
 
         token = await Token.deploy("Token", "TKN", maxTokenSupply, bridge.address);
@@ -53,32 +53,32 @@ describe("Bridge", function () {
         notWhitelistedToken = await Token.deploy("Token2", "TKN2", maxTokenSupply, bridge.address);
         await notWhitelistedToken.deployed();
 
-        await hub.addContract("governance", governanceAddr.address);
-        await hub.addContract("bridge", bridge.address);
-        await hub.completeContractInit();
+        await proxy.addContract("governance", governanceAddr.address);
+        await proxy.addContract("bridge", bridge.address);
+        await proxy.completeContractInit();
 
         await network.provider.send("evm_mine")
     });
 
     it("Initialize contract testing", async function () {
         // invalid threshold power 
-        const bridgeInvalidPowerThreshold = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold * 2, hub.address);
+        const bridgeInvalidPowerThreshold = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [], powerThreshold * 2, proxy.address);
         await expect(bridgeInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2
-        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, hub.address);
+        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, proxy.address);
         await expect(bridgeInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid token cap length
-        const bridgeInvalidTokenCapLength = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [10], powerThreshold, hub.address);
+        const bridgeInvalidTokenCapLength = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers, [], [10], powerThreshold, proxy.address);
         await expect(bridgeInvalidTokenCapLength).to.be.revertedWith("Invalid token whitelist.")
 
         // mismatch array length 
-        const bridgeInvalidArrayLength = Bridge.deploy(1, validatorsAddresses, [1], validatorsAddresses, [1], [], [], powerThreshold, hub.address);
+        const bridgeInvalidArrayLength = Bridge.deploy(1, validatorsAddresses, [1], validatorsAddresses, [1], [], [], powerThreshold, proxy.address);
         await expect(bridgeInvalidArrayLength).to.be.revertedWith("Mismatch array length.");
 
         // mismatch array length  2
-        const bridgeInvalidArrayLengthTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, [1], [], [], powerThreshold, hub.address);
+        const bridgeInvalidArrayLengthTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, [1], [], [], powerThreshold, proxy.address);
         await expect(bridgeInvalidArrayLengthTwo).to.be.revertedWith("Mismatch array length.");
     });
 

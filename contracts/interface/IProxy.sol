@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.15;
 
-interface IHub {
+interface IProxy {
     function upgradeContract(string memory name, address addr) external;
 
     function addContract(string memory name, address addr) external;

@@ -1,6 +1,6 @@
-# Hub
+# Proxy
 
-`Hub` smart contract holds references to the addresses of the latests contract version. This is useful when smart contracts need to communiate between them. The same pattern is beign use by rocketpool.
+`Proxy` smart contract holds references to the addresses of the latests contract version. This is useful when smart contracts need to communiate between them. The same pattern is beign use by rocketpool.
 
 # Functions
 

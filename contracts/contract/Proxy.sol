@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.15;
 
-import "../interface/IHub.sol";
+import "../interface/IProxy.sol";
 
-contract Hub is IHub {
+contract Proxy is IProxy {
     // Storage maps
     mapping(bytes32 => address) private contractStorage;
     mapping(address => bool) private existContractStorage;

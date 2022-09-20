@@ -1,6 +1,6 @@
 # Namada Ethereum Bridge 
 
-Namada Ethereum bridge is a set of smart contract to enable the exchange of tokens between the namada chain and ERC20 ethereum tokens. The mechanism used is highly inspired from [Cosmos Gravity Bridge](https://github.com/Gravity-Bridge/Gravity-Bridge).
+Namada Ethereum bridge is a set of smart contract to enable the exchange of tokens between the namada chain and ERC20 ethereum tokens. The mechanism used is highly inspired from [Cosmos Gravity Bridge](https://gitproxy.com/Gravity-Bridge/Gravity-Bridge).
 
 # Features
 
@@ -15,9 +15,9 @@ Namada Ethereum bridge is a set of smart contract to enable the exchange of toke
 The smart contracts used to operate the namada bridge on ethereum are:
 - `Governance.sol`
 - `Bridge.sol`
-- `Hub.sol`
+- `Proxy.sol`
 
-`Hub` smart contract is in charge of keeping track of the existing contract addresses and can be queries by other smart contracts.
+`Proxy` smart contract is in charge of keeping track of the existing contract addresses and can be queries by other smart contracts.
 
 `Bridge` is in charge of authorizing tokens the transfers between the chains.
 
