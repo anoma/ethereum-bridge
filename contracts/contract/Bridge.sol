@@ -21,9 +21,8 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 private transferToNamadaNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
-    uint256 private constant MAX_UINT = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
-    mapping(address => uint256) tokenWhiteList;
+    mapping(address => uint256) private tokenWhiteList;
 
     IProxy private proxy;
 

@@ -5,9 +5,8 @@ import "../interface/IProxy.sol";
 import "../interface/IVault.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Vault is IVault, ReentrancyGuard {
+contract Vault is IVault {
     IProxy private proxy;
 
     constructor(IProxy _proxy) {
@@ -21,7 +20,6 @@ contract Vault is IVault, ReentrancyGuard {
     )
         external
         onlyLatestBridgeContract
-        nonReentrant
         returns (
             address[] memory froms,
             address[] memory tos,

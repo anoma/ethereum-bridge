@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "../interface/IProxy.sol";
 
 contract Proxy is IProxy {
-    // Storage maps
     mapping(bytes32 => address) private contractStorage;
     mapping(address => bool) private existContractStorage;
     address private owner;

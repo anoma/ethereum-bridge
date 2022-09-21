@@ -4,7 +4,7 @@ Smart contrats test suite.
 
 # How to run
 
-Run a node in a tab with:
+Run a node in a shell with:
 
 ```bash
 make node

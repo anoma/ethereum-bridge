@@ -10,7 +10,7 @@ contract Token is ERC20 {
         uint256[] memory initialSupplies,
         address[] memory addresses
     ) ERC20(name, symbol) {
-        require(initialSupplies.length == addresses.length, "Invalid address/amount parameters.");
+        require(initialSupplies.length == addresses.length, "Invalid parameters.");
 
         for (uint256 i = 0; i < addresses.length; ++i) {
             _mint(addresses[i], initialSupplies[i]);

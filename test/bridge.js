@@ -1,6 +1,5 @@
 const { expect, assert } = require("chai");
 const { ethers, network } = require("hardhat");
-const { getContractAddress } = require('@ethersproject/address')
 const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
 
 describe("Bridge", function () {
@@ -263,7 +262,7 @@ describe("Bridge", function () {
     });
 
     it("transferToNamada testing", async function () {
-        const [newWallet] = await ethers.getSigners()
+        const [newWallet, randomAddress] = await ethers.getSigners()
         const fromAddresses = [token.address, notWhitelistedToken.address]
         const transferAmount = 500;
         const tos = ["anamadaAddress"]
@@ -335,12 +334,14 @@ describe("Bridge", function () {
 
         const vaultBalanceAfterInsuficientAmountTransaction = await token.balanceOf(vault.address);
         expect(vaultBalanceAfterInsuficientAmountTransaction).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
+
+        const randomAddressPreBalance = await token.balanceOf(randomAddress.address);
         
-        // valid 
+        // partially valid 
         await bridge.connect(newWallet).transferToNamada(
-            [token.address],
-            tos,
-            [100],
+            [token.address, token.address],
+            tos.concat([randomAddress]),
+            [100, 50],
             numberOfConfirmations
         );
 
@@ -349,5 +350,8 @@ describe("Bridge", function () {
 
         const updatedVaultBalanceAfterTransfer = await token.balanceOf(vault.address);
         expect(updatedVaultBalanceAfterTransfer).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900 + 100))
+
+        const randomAddressPostBalance = await token.balanceOf(randomAddress.address);
+        expect(randomAddressPostBalance).to.be.equal(randomAddressPreBalance)
     });
 })
