@@ -24,7 +24,6 @@ interface IGovernance is ICommon {
     function upgradeBridgeContract(
         ValidatorSetArgs calldata _validators,
         Signature[] calldata _signatures,
-        address[] calldata _tokens,
         address payable _address
     ) external;
 
@@ -48,12 +47,5 @@ interface IGovernance is ICommon {
         address[] calldata tokens,
         uint256[] calldata tokensCap,
         Signature[] calldata signatures
-    ) external;
-
-    function withdraw(
-        ValidatorSetArgs calldata validators,
-        Signature[] calldata signatures,
-        address[] calldata tokens,
-        address payable to
     ) external;
 }

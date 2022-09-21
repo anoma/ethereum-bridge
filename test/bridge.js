@@ -117,8 +117,8 @@ describe("Bridge", function () {
         const validatorSetHash = await bridge.currentValidatorSetHash();
         const batchNonce = 1;
 
-        const preBridgeBalance = await token.balanceOf(bridge.address);
-        expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+        const intialVaultBalance = await token.balanceOf(vault.address);
+        expect(intialVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
         
         // valid transfer
         const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
@@ -143,8 +143,8 @@ describe("Bridge", function () {
         const balance = await token.balanceOf(toAddresses[0]);
         expect(balance).to.be.equal(ethers.BigNumber.from(amounts[0]))
 
-        const balanceBridge = await token.balanceOf(bridge.address);
-        expect(balanceBridge).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0]))
+        const postVaultBalance = await token.balanceOf(vault.address);
+        expect(postVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0]))
 
         // invalid transfer bad nonce (too little)
         const badNonceInvalid = 0;
@@ -255,23 +255,19 @@ describe("Bridge", function () {
             amounts,
             batchNonce + 1
         );
-        const balanceValid = await token.balanceOf(toAddresses[0]);
-        expect(balanceValid).to.be.equal(ethers.BigNumber.from(amounts[0] + amounts[0]))
+        const postWalletBalance = await token.balanceOf(toAddresses[0]);
+        expect(postWalletBalance).to.be.equal(ethers.BigNumber.from(amounts[0] * 2))
 
-        const balanceBridgeValid = await token.balanceOf(bridge.address);
-        expect(balanceBridgeValid).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0] - amounts[0]))
+        const postPostVaultBalance = await token.balanceOf(vault.address);
+        expect(postPostVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0] * 2))
     });
 
     it("transferToNamada testing", async function () {
         const [newWallet] = await ethers.getSigners()
-        const toAddresses = [newWallet.address, newWallet.address]
         const fromAddresses = [token.address, notWhitelistedToken.address]
-        const amounts = [5000, 5000]
-        const validatorSetHash = await bridge.currentValidatorSetHash();
-        const batchNonce = 2;
         const transferAmount = 500;
         const tos = ["anamadaAddress"]
-        const numberOfConfirmations = 24;
+        const numberOfConfirmations = 100;
 
         const preBridgeBalance = await token.balanceOf(vault.address);
         expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
@@ -327,14 +323,19 @@ describe("Bridge", function () {
         await expect(trasferInvalidBatch).to.be.revertedWith("Invalid batch.");
 
         // transfer invalid insufficient amount
-        const trasferInvalidInsufficientAmount =  bridge.connect(newWallet).transferToNamada(
+        await bridge.connect(newWallet).transferToNamada(
             [token.address],
             tos,
             [200],
             numberOfConfirmations
         );
-        await expect(trasferInvalidInsufficientAmount).to.be.revertedWith("ERC20: insufficient allowance");
+        
+        const balanceAfterInsuficientAmountTransaction = await token.balanceOf(newWallet.address);
+        expect(balanceAfterInsuficientAmountTransaction).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
 
+        const vaultBalanceAfterInsuficientAmountTransaction = await token.balanceOf(vault.address);
+        expect(vaultBalanceAfterInsuficientAmountTransaction).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
+        
         // valid 
         await bridge.connect(newWallet).transferToNamada(
             [token.address],
@@ -349,15 +350,4 @@ describe("Bridge", function () {
         const updatedVaultBalanceAfterTransfer = await token.balanceOf(vault.address);
         expect(updatedVaultBalanceAfterTransfer).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900 + 100))
     });
-
-    it("withdraw testing", async function () {
-        // withdraw invalid caller
-        const withdrawInvalid = bridge.withdraw([token.address], ethers.Wallet.createRandom().address)
-        await expect(withdrawInvalid).to.be.revertedWith("Invalid caller.")
-
-        // withdraw valid
-        await bridge.connect(governanceAddr).withdraw([token.address], ethers.Wallet.createRandom().address)
-        const balanceTokenOneAfter = await token.balanceOf(token.address);
-        expect(balanceTokenOneAfter).to.be.equal(0)  
-    })
 })

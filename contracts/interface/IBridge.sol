@@ -11,6 +11,9 @@ interface IBridge is ICommon {
         uint256[] amounts,
         uint256 confirmations
     );
+
+    event InvalidTransferToNamada(address indexed from, string indexed to, uint256 amount);
+
     event TransferToERC(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
 
     function authorize(
@@ -36,8 +39,6 @@ interface IBridge is ICommon {
     ) external;
 
     function updateTokenWhitelist(address[] calldata tokens, uint256[] calldata tokensCap) external;
-
-    function withdraw(address[] calldata tokens, address payable to) external;
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external;
 }

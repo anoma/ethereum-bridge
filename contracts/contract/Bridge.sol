@@ -11,8 +11,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Bridge is IBridge, ReentrancyGuard {
-    using SafeERC20 for IERC20;
-
     uint8 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
@@ -101,12 +99,18 @@ contract Bridge is IBridge, ReentrancyGuard {
             "Invalid validator set signature."
         );
 
-        for (uint256 i = 0; i < _amounts.length; ++i) {
-            IERC20(_froms[i]).safeTransfer(_tos[i], _amounts[i]);
-        }
-
         transferToERC20Nonce = _batchNonce;
-        emit TransferToERC(transferToERC20Nonce, _froms, _tos, _amounts);
+
+        address vaultAddress = proxy.getContract("vault");
+        IVault vault = IVault(vaultAddress);
+
+        address[] memory validFroms = new address[](_froms.length);
+        address[] memory validTos = new address[](_tos.length);
+        uint256[] memory validAmounts = new uint256[](_amounts.length);
+
+        (validFroms, validTos, validAmounts) = vault.batchTransferToERC20(_froms, _tos, _amounts);
+
+        emit TransferToERC(transferToERC20Nonce, validFroms, validTos, validAmounts);
     }
 
     function transferToNamada(
@@ -117,8 +121,11 @@ contract Bridge is IBridge, ReentrancyGuard {
     ) external nonReentrant {
         require(_froms.length == _amounts.length, "Invalid batch.");
 
-        uint256[] memory amounts = new uint256[](_amounts.length);
         address vaultAddress = proxy.getContract("vault");
+
+        address[] memory validFroms = new address[](_froms.length);
+        string[] memory validTos = new string[](_tos.length);
+        uint256[] memory validAmounts = new uint256[](_amounts.length);
 
         for (uint256 i = 0; i < _amounts.length; ++i) {
             require(tokenWhiteList[_froms[i]] != 0, "Token is not whitelisted.");
@@ -126,16 +133,20 @@ contract Bridge is IBridge, ReentrancyGuard {
 
             uint256 preBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
 
-            IERC20(_froms[i]).safeTransferFrom(msg.sender, vaultAddress, _amounts[i]);
-
-            uint256 postBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
-            require(postBalance > preBalance, "Invalid transfer.");
-
-            amounts[i] = postBalance - preBalance;
+            try IERC20(_froms[i]).transferFrom(msg.sender, vaultAddress, _amounts[i]) {
+                uint256 postBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
+                if (postBalance > preBalance) {
+                    validFroms[i] = _froms[i];
+                    validTos[i] = _tos[i];
+                    validAmounts[i] = postBalance - preBalance;
+                }
+            } catch {
+                emit InvalidTransferToNamada(_froms[i], _tos[i], _amounts[i]);
+            }
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
-        emit TransferToNamada(transferToNamadaNonce, _froms, _tos, amounts, confirmations);
+        emit TransferToNamada(transferToNamadaNonce, validFroms, validTos, validAmounts, confirmations);
     }
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
@@ -151,18 +162,6 @@ contract Bridge is IBridge, ReentrancyGuard {
         for (uint256 i = 0; i < _tokens.length; i++) {
             tokenWhiteList[_tokens[i]] = _tokensCap[i];
         }
-    }
-
-    function withdraw(address[] calldata _tokens, address payable _to) external onlyLatestGovernanceContract {
-        require(_to != address(0), "Invalid address.");
-        address self = address(this);
-
-        for (uint256 i = 0; i < _tokens.length; i++) {
-            uint256 balance = IERC20(_tokens[i]).balanceOf(self);
-            IERC20(_tokens[i]).safeTransfer(_to, balance);
-        }
-
-        selfdestruct(_to);
     }
 
     function checkValidatorSetVotingPowerAndSignature(
