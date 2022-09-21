@@ -3,20 +3,20 @@ const { updateValidatorSetBenchmark, updateValidatorSetBenchmarkFixed } = requir
 const { trasferToERC20 } = require('./bridge')
 
 const benchmarks = [
-    // [updateValidatorSetBenchmark, {
-    //     from: 120,
-    //     to: 180,
-    //     extra: { label: "Gas Used", name: "benchmarks/updateValidatorsSet-graph.png" }
-    // }],
+    [updateValidatorSetBenchmark, {
+        from: 120,
+        to: 150,
+        extra: { label: "Gas Used", name: "benchmarks/images/updateValidatorsSet-graph.png" }
+    }],
     [trasferToERC20, {
         from: 1,
-        to: 100,
-        extra: { label: "Gas Used", name: "benchmarks/trasferToERC20-graph.png" }
+        to: 20,
+        extra: { label: "Gas Used", name: "benchmarks/images/trasferToERC20-graph.png" }
     }],
     [updateValidatorSetBenchmarkFixed, {
         from: 1,
-        to: 25,
-        extra: { label: "Gas Used", name: "benchmarks/updateValidatorsSetFixed125-graph.png" }
+        to: 15,
+        extra: { label: "Gas Used", name: "benchmarks/images/updateValidatorsSetFixed125-graph.png" }
     }],
 ]
 
