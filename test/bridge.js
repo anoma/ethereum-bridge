@@ -289,25 +289,23 @@ describe("Bridge", function () {
         expect(updatedVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
         
         // invalid due to non-whitelisted token
-        const trasferInvalidNonWhitelistedToken = bridge.connect(newWallet).transferToNamada(
+        // will not revert but no token transfer happen
+        await bridge.connect(newWallet).transferToNamada(
             [notWhitelistedToken.address],
             tos,
             [transferAmount],
             numberOfConfirmations
         );
 
-        await expect(trasferInvalidNonWhitelistedToken).to.be.revertedWith("Token is not whitelisted.")
-
         const nonWhitelistedTokenBalance = await notWhitelistedToken.balanceOf(newWallet.address);
         expect(nonWhitelistedTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
 
-        const transferInvalidTokenCap = bridge.connect(newWallet).transferToNamada(
+        await bridge.connect(newWallet).transferToNamada(
             [token.address],
             tos,
             [15000],
             numberOfConfirmations
         );
-        await expect(transferInvalidTokenCap).to.be.revertedWith("Token cap reached.")
         
         const updatedNewWalletbalanceAfterInvalidTokenCap = await token.balanceOf(newWallet.address);
         expect(updatedNewWalletbalanceAfterInvalidTokenCap).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))

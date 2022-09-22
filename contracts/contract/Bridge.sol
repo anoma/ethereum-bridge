@@ -22,7 +22,7 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
-    mapping(address => uint256) private tokenWhiteList;
+    mapping(address => uint256) public tokenWhiteList;
 
     IProxy private proxy;
 
@@ -127,8 +127,9 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] memory validAmounts = new uint256[](_amounts.length);
 
         for (uint256 i = 0; i < _amounts.length; ++i) {
-            require(tokenWhiteList[_froms[i]] != 0, "Token is not whitelisted.");
-            require(tokenWhiteList[_froms[i]] >= _amounts[i], "Token cap reached.");
+            if (tokenWhiteList[_froms[i]] != 0 || tokenWhiteList[_froms[i]] >= _amounts[i]) {
+                emit InvalidTransferToNamada(_froms[i], _tos[i], _amounts[i]);
+            }
 
             uint256 preBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
 
