@@ -60,7 +60,6 @@ contract Governance is IGovernance, ReentrancyGuard {
     function upgradeBridgeContract(
         ValidatorSetArgs calldata _validators,
         Signature[] calldata _signatures,
-        address[] calldata _tokens,
         address payable _address
     ) external {
         require(_address != address(0), "Invalid address.");
@@ -71,7 +70,6 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         proxy.upgradeContract("bridge", _address);
-        bridge.withdraw(_tokens, _address);
     }
 
     function addContract(
@@ -175,25 +173,6 @@ contract Governance is IGovernance, ReentrancyGuard {
             }
         }
         return powerAccumulator >= thresholdVotingPower;
-    }
-
-    function withdraw(
-        ValidatorSetArgs calldata _validators,
-        Signature[] calldata _signatures,
-        address[] calldata _tokens,
-        address payable _to
-    ) external {
-        require(_to != address(0), "Invalid address.");
-
-        bytes32 messageHash = computeWithdrawHash(_validators, _to, _tokens);
-        require(authorize(_validators, _signatures, messageHash), "Unauthorized.");
-
-        withdrawNonce = withdrawNonce + 1;
-
-        address bridgeAddress = proxy.getContract("bridge");
-        IBridge bridge = IBridge(bridgeAddress);
-
-        bridge.withdraw(_tokens, _to);
     }
 
     function isValidSignature(

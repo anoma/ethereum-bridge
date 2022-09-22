@@ -16,19 +16,22 @@ const updateValidatorSetBenchmarkLadder = async function (index) {
     const Proxy = await ethers.getContractFactory("Proxy");
     const Governance = await ethers.getContractFactory("Governance");
     const Bridge = await ethers.getContractFactory("Bridge");
+    const Vault = await ethers.getContractFactory("Vault");
 
     const proxy = await Proxy.deploy();
-    const proxyAddress = proxy.address;
 
-    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxyAddress);
+    const vault = await Vault.deploy(proxy.address);
+    await vault.deployed();
+
+    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxy.address);
     await governance.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, proxyAddress);
+    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, proxy.address);
     await bridge.deployed();
 
     await proxy.addContract("governance", governance.address);
     await proxy.addContract("bridge", bridge.address);
-
+    await proxy.addContract("vault", vault.address);
     await proxy.completeContractInit();
 
     await network.provider.send("evm_mine")
@@ -45,13 +48,13 @@ const updateValidatorSetBenchmarkLadder = async function (index) {
 
     const messageHash = generateArbitraryHash(
         ["uint8", "string", "bytes32", "bytes32", "uint256"],
-        [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 1]
+        [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
     )
 
     const signatures = await generateSignatures(bridgeSigners, messageHash);
 
     try {
-        const tx = await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures)
+        const tx = await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures, 2)
 
         const receipt = await tx.wait()
         const txGas = Number(receipt.gasUsed);
@@ -77,19 +80,23 @@ const updateValidatorSetBenchmarkFixed = async function (index) {
     const Proxy = await ethers.getContractFactory("Proxy");
     const Governance = await ethers.getContractFactory("Governance");
     const Bridge = await ethers.getContractFactory("Bridge");
+    const Vault = await ethers.getContractFactory("Vault");
 
     const proxy = await Proxy.deploy();
-    const proxyAddress = proxy.address;
+    await proxy.deployed()
 
-    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxyAddress);
+    const vault = await Vault.deploy(proxy.address);
+    await vault.deployed();
+
+    const governance = await Governance.deploy(1, governanceValidatorsAddresses, governanceNormalizedPowers, powerThreshold, proxy.address);
     await governance.deployed();
 
-    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers, powerThreshold, proxyAddress);
+    const bridge = await Bridge.deploy(1, bridgeValidatorsAddresses, bridgeNormalizedPowers,bridgeValidatorsAddresses, bridgeNormalizedPowers, [], [], powerThreshold, proxy.address);
     await bridge.deployed();
 
     await proxy.addContract("governance", governance.address);
     await proxy.addContract("bridge", bridge.address);
-
+    await proxy.addContract("vault", vault.address)
     await proxy.completeContractInit();
 
     await network.provider.send("evm_mine")
@@ -106,13 +113,13 @@ const updateValidatorSetBenchmarkFixed = async function (index) {
 
     const messageHash = generateArbitraryHash(
         ["uint8", "string", "bytes32", "bytes32", "uint256"],
-        [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 1]
+        [1, "updateValidatorsSet", newBridgeValidatorSetHash, newGovernanceValidatorSetHash, 2]
     )
 
     const signatures = await generateSignatures(bridgeSigners, messageHash);
 
     try {
-        const tx = await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures)
+        const tx = await governance.updateValidatorsSet(currentBridgeValidatorSetArgs, newBridgeValidatorSetHash, newGovernanceValidatorSetHash, signatures, 2)
 
         const receipt = await tx.wait()
         const txGas = Number(receipt.gasUsed);

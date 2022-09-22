@@ -117,16 +117,20 @@ async function main() {
     const Proxy = await ethers.getContractFactory("Proxy");
     const Bridge = await ethers.getContractFactory("Bridge");
     const Governance = await ethers.getContractFactory("Governance");
+    const Vault = await ethers.getContractFactory("Vault");
     const Token = await ethers.getContractFactory("Token");
 
-    const token = await Token.deploy("Wrapper Namada", "WNAM", tokenSupply, deployer.address);
+    const proxy = await Proxy.deploy();
+    await proxy.deployed();
+
+    const vault = await Vault.deploy(proxy.address);
+    await vault.deployed();
+
+    const token = await Token.deploy("Wrapper Namada", "WNAM", [tokenSupply], [vault.address]);
     await token.deployed();
 
     const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [token.address] : tokenWhitelistPrompt.split(',').map(token => token.trim()).concat(token.address)
     const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
-
-    const proxy = await Proxy.deploy();
-    await proxy.deployed();
 
     const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, nextBridgeValidators, nextBridgeVotingPowers, tokenWhitelist, tokenCaps, bridgeVotingPowerThreshold, proxy.address);
     await bridge.deployed();
@@ -136,10 +140,9 @@ async function main() {
 
     await proxy.addContract("governance", governance.address);
     await proxy.addContract("bridge", bridge.address);
+    await proxy.addContract("vault", vault.address);
 
     await proxy.completeContractInit();
-
-    await token.transfer(bridge.address, tokenSupply)
 
     console.log("")
     console.log(`Proxy address: ${proxy.address}`)
