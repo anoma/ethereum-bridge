@@ -61,8 +61,8 @@ describe("Vault", function () {
     });
 
     it("Invalid caller testing", async function () {
-        const [_, caller, from, to] = await ethers.getSigners()
-        const invalidCaller = vault.connect(caller).batchTransferToERC20([from.address], [to.address], [50])
+        const [_, caller] = await ethers.getSigners()
+        const invalidCaller = vault.connect(caller).batchTransferToERC20([])
 
         await expect(invalidCaller).to.be.revertedWith("Invalid caller.");
     })

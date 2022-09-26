@@ -16,7 +16,6 @@ contract Governance is IGovernance, ReentrancyGuard {
     bytes32 public validatorSetHash;
     uint256 public validatorSetNonce = 1;
 
-    uint256 public withdrawNonce = 0;
     uint256 public whitelistNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
@@ -34,7 +33,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
 
         version = _version;
-        validatorSetHash = computeValidatorSetHash(_validators, _powers, 0);
+        validatorSetHash = _computeValidatorSetHash(_validators, _powers, 0);
         thresholdVotingPower = _thresholdVotingPower;
         proxy = IProxy(_proxy);
     }
@@ -154,7 +153,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         bytes32 _messageHash
     ) private view returns (bool) {
         require(_validators.validators.length == _validators.powers.length, "Malformed input.");
-        require(computeValidatorSetHash(_validators) == validatorSetHash, "Invalid validatorSetHash.");
+        require(_computeValidatorSetHash(_validators) == validatorSetHash, "Invalid validatorSetHash.");
 
         uint256 powerAccumulator = 0;
         for (uint256 i = 0; i < _validators.powers.length; i++) {
@@ -185,7 +184,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         return error == ECDSA.RecoverError.NoError && _signer == signer;
     }
 
-    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
+    function _computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
@@ -198,7 +197,7 @@ contract Governance is IGovernance, ReentrancyGuard {
             );
     }
 
-    function computeValidatorSetHash(
+    function _computeValidatorSetHash(
         address[] memory validators,
         uint256[] memory powers,
         uint256 nonce

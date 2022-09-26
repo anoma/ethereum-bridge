@@ -1,18 +1,10 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-interface IVault {
-    event InvalidTransfer(address indexed from, address indexed to, uint256 amounts);
+import "./ICommon.sol";
 
-    function batchTransferToERC20(
-        address[] calldata _froms,
-        address[] calldata _tos,
-        uint256[] calldata _amounts
-    )
-        external
-        returns (
-            address[] memory froms,
-            address[] memory tos,
-            uint256[] memory amounts
-        );
+interface IVault is ICommon {
+    event InvalidTransfer(ERC20Transfer transfer);
+
+    function batchTransferToERC20(ERC20Transfer[] calldata tranfers) external returns (ERC20Transfer[] memory);
 }

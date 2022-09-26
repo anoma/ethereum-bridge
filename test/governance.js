@@ -77,8 +77,8 @@ describe("Governance", function () {
         const newNormalizedPowers = normalizePowers(newPowers);
         
         const newPowerThreshold = computeThreshold(newNormalizedPowers);
-        expect(newPowerThreshold).to.be.greaterThan(powerThreshold - 10);
-        expect(newPowerThreshold).to.be.lessThan(powerThreshold + 10);
+        expect(newPowerThreshold).to.be.greaterThan(powerThreshold - 15);
+        expect(newPowerThreshold).to.be.lessThan(powerThreshold + 15);
         
         const currentBridgeValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
         
@@ -155,12 +155,12 @@ describe("Governance", function () {
             ["uint8", "string", "string", "address",],
             [1, "test", contractName, newContractAddress]
         )
-        const signaturesInvalidHash = await generateSignatures(bridgeSigners, messageHashInvalid);
+        const signaturesInvalidHash = await generateSignatures(governanceSigners, messageHashInvalid);
         const upgradeInvalidHash = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidHash, contractName, newContractAddress)
         await expect(upgradeInvalidHash).to.be.revertedWith("Unauthorized.")
 
         // upgrade contract invalid signatures
-        const signaturesInvalidSignatures = await generateSignatures(bridgeSigners, messageHash);
+        const signaturesInvalidSignatures = await generateSignatures(governanceSigners, messageHash);
         signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
         const upgradeInvalidSignatures = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
         await expect(upgradeInvalidSignatures).to.be.revertedWith("Unauthorized.")
