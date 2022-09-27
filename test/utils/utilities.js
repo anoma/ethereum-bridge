@@ -68,6 +68,10 @@ const generateBatchTransferHash = (froms, tos, amounts, nonce, validatorSetHash,
     return generateArbitraryHash(["uint8", "string", "address[]", "address[]", "uint256[]", "uint256", "bytes32"], [1, namespace, froms, tos, amounts, nonce, validatorSetHash])
 }
 
+function randomInteger(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
 exports.randomPowers = randomPowers;
 exports.computeThreshold = computeThreshold;
 exports.getSignersAddresses = getSignersAddresses;
@@ -79,3 +83,4 @@ exports.generateValidatorSetHash = generateValidatorSetHash;
 exports.generateBatchTransferHash = generateBatchTransferHash;
 exports.generateSignatures = generateSignatures;
 exports.generateArbitraryHash = generateArbitraryHash;
+exports.randomInteger = randomInteger;

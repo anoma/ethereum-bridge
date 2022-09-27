@@ -1,6 +1,10 @@
 const { expect, assert } = require("chai");
 const { ethers, network } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash, generateBatchTransferHash } = require("./utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateArbitraryHash } = require("./utils/utilities")
+const { MerkleTree } = require('merkletreejs');
+const { WMerkleTree, LeafSignature } = require('ethers-merkletree');
+const gen = require('random-seed');
+const keccak256 = require('keccak256');
 
 describe("Bridge", function () {
     let Proxy;
@@ -16,10 +20,13 @@ describe("Bridge", function () {
     let normalizedPowers;
     let powerThreshold;
     let governanceAddr;
+    let random;
     const maxTokenSupply = 15000;
     const walletTokenAmount = 6000;
 
     beforeEach(async function () {
+        random = gen.create("seed");
+
         const [owner] = await ethers.getSigners()
         const [_, governanceAddress] = await ethers.getSigners();
         const totalValidators = 125;
@@ -65,7 +72,7 @@ describe("Bridge", function () {
         await expect(bridgeInvalidPowerThreshold).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid threshold power 2
-        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p/2)), [], [], powerThreshold, proxy.address);
+        const bridgeInvalidPowerThresholdTwo = Bridge.deploy(1, validatorsAddresses, normalizedPowers, validatorsAddresses, normalizedPowers.map(p => Math.floor(p / 2)), [], [], powerThreshold, proxy.address);
         await expect(bridgeInvalidPowerThresholdTwo).to.be.revertedWith("Invalid voting power threshold.")
 
         // invalid token cap length
@@ -109,156 +116,233 @@ describe("Bridge", function () {
         await expect(resultInvalidValidatoSetHash).to.be.reverted;
     });
 
-    it("transferToERC20 testing", async function () {
-        const toAddresses = [ethers.Wallet.createRandom().address]
-        const fromAddresses = [token.address]
-        const amounts = [200]
-        const validatorSetHash = await bridge.currentValidatorSetHash();
+    it.only("transferToERC20 testing", async function () {
+        const [_, test] = await ethers.getSigners()
         const batchNonce = 1;
 
         const intialVaultBalance = await token.balanceOf(vault.address);
         expect(intialVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
-        
-        // valid transfer
-        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-        const messageHash = generateBatchTransferHash(
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce,
-            validatorSetHash,
-            "transfer"
-        );
-        const signatures = await generateSignatures(signers, messageHash);
 
+        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
+
+        const transfers = [...Array(20).keys()].map(index => {
+            return {
+                'from': token.address,
+                'to': ethers.Wallet.fromMnemonic(
+                    ethers.utils.entropyToMnemonic(
+                        Buffer.from([...Array(16).keys()].map(_ => index).join(''), 'utf-8')
+                    )
+                ).address,
+                'amount': random.intBetween(0, 100),
+                'feeFrom': 'aNamadaAddress',
+                'fee': random.intBetween(0, 100)
+            }
+        })
+
+        console.log(transfers.map(t => {
+            return {
+                'version': 1,
+                'namespace': "transfer",
+                'from': t.from,
+                'to': t.to,
+                'amount': t.amount,
+                'feeFrom': t.feeFrom,
+                'fee': t.fee,
+                'nonce': 1
+            }
+        }))
+
+        for (const transfer of transfers) {
+            const initialAddressBalance = await token.balanceOf(transfer.to)
+            expect(initialAddressBalance).to.be.equal(ethers.BigNumber.from(0))
+        }
+
+        const transferHashes = transfers.map(transfer => {
+            return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, batchNonce])
+        }).map(keccak256)
+
+        const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
+
+        // build merkle tree, generate proofs
+        const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
+        const root = merkleTree.getRoot();
+
+        // console.log(merkleTree.toString())
+        const rootHex = merkleTree.getHexRoot();
+        console.log(rootHex)
+
+        const proofLeaves = transfers.slice(0, 2).map(transfer => {
+            return ethers.utils.solidityPack(["uint8", "string", "address", "address","uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, batchNonce])
+        }).map(keccak256).sort(Buffer.compare)
+        const proof = merkleTree.getMultiProof(proofLeaves);
+        const proofFlags = merkleTree.getProofFlags(proofLeaves, proof);
+
+        const validTransfers = proofLeaves.map(proof => {
+            return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
+        }).map(index => transfers[index])
+
+        // console.log(merkleTree.getHexLeaves())
+        // console.log(proofLeaves)
+        // console.log(proof)
+        // console.log(proofFlags)
+        // console.log(root)
+        // console.log(validTransfers)
+
+        const signatures = await generateSignatures(signers, root);
+
+        // valid transfer
         await bridge.transferToERC(
             currentValidatorSetArgs,
             signatures,
-            fromAddresses,
-            toAddresses,
-            amounts,
+            validTransfers,
+            root,
+            proof,
+            proofFlags,
             batchNonce
-        );
-        const balance = await token.balanceOf(toAddresses[0]);
-        expect(balance).to.be.equal(ethers.BigNumber.from(amounts[0]))
+        )
+
+        // check wallets balances
+        let totalTransfered = 0
+        for (const transfer of validTransfers) {
+            const transferWalletBalance = await token.balanceOf(transfer.to);
+            expect(transferWalletBalance).to.be.equal(ethers.BigNumber.from(transfer.amount))
+            totalTransfered += transfer.amount
+        }
 
         const postVaultBalance = await token.balanceOf(vault.address);
-        expect(postVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0]))
+        expect(postVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply - totalTransfered))
 
-        // invalid transfer bad nonce (too little)
-        const badNonceInvalid = 0;
-        const messageHashInvalid = generateBatchTransferHash(
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce,
-            validatorSetHash,
-            "transfer"
-        );
-        const signaturesInvalid = await generateSignatures(signers, messageHashInvalid);
-        const bridgeTransferInvalidBadNonce = bridge.transferToERC(
-            currentValidatorSetArgs,
-            signaturesInvalid,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            badNonceInvalid
-        );
-        await expect(bridgeTransferInvalidBadNonce).to.be.revertedWith("Invalid nonce.")
+        // // same root, invalid transfer to due nonce
+        // const proofLeavesTwo = [transfers[0], transfers[15], transfers[29]].map(transfer => {
+        //     return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.fee, batchNonce])
+        // }).map(keccak256).sort(Buffer.compare)
+        // const proofTwo = merkleTree.getMultiProof(proofLeaves);
+        // const proofFlagsTwo = merkleTree.getProofFlags(proofLeaves, proof);
 
-        // invalid transfer bad nonce (too big)
-        const badNonceInvalidTooBig = 12020;
-        const messageHashInvalidTooBig = generateBatchTransferHash(
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce,
-            validatorSetHash,
-            "transfer"
-        );
-        const signaturesInvalidTooBig = await generateSignatures(signers, messageHashInvalidTooBig);
-        const bridgeTransferInvalidBadNonceTooBig = bridge.transferToERC(
-            currentValidatorSetArgs,
-            signaturesInvalidTooBig,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            badNonceInvalidTooBig
-        );
-        await expect(bridgeTransferInvalidBadNonceTooBig).to.be.revertedWith("Invalid nonce.")
+        // const transferOneIndexTwo = transferHashes.map(transfer => transfer.toString('hex')).findIndex(transfer => transfer == proofLeaves[0].toString('hex'))
+        // const transferFifthTeenIndexTwo = transferHashes.map(transfer => transfer.toString('hex')).findIndex(transfer => transfer == proofLeaves[1].toString('hex'))
+        // const transferThirtyIndexTwo = transferHashes.map(transfer => transfer.toString('hex')).findIndex(transfer => transfer == proofLeaves[2].toString('hex'))
+        // const validTransfersTwo = [transferOneIndexTwo, transferFifthTeenIndexTwo, transferThirtyIndexTwo].map(index => transfers[index])
 
-        // invalid transfer mismatch array lengths
-        const bridgeTransferInvalidMismatchLengths = bridge.transferToERC(
-            currentValidatorSetArgs,
-            [signatures[0]],
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce+1
-        );
-        await expect(bridgeTransferInvalidMismatchLengths).to.be.revertedWith("Mismatch array length.")
+        // const invalidNonceTransfer = bridge.transferToERC(
+        //     currentValidatorSetArgs,
+        //     signatures,
+        //     validTransfersTwo,
+        //     root,
+        //     proofTwo,
+        //     proofFlagsTwo,
+        //     batchNonce
+        // )
+        // await expect(invalidNonceTransfer).to.be.revertedWith("Invalid batchNonce.")
 
-        // invalid transfer bad validator set hash
-        const currentValidatorSetArgsInvalidValidatorSetHash = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 1)
-        const bridgeTransferInvalidValidatorSetHash = bridge.transferToERC(
-            currentValidatorSetArgsInvalidValidatorSetHash,
-            signatures,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce+1
-        );
-        await expect(bridgeTransferInvalidValidatorSetHash).to.be.revertedWith("Invalid currentValidatorSetHash.")
+        // // invalid root signature
+        // const invalidSignature = await generateSignatures(signers, keccak256("randomInvalidRoot"));
 
-        // invalid transfer bad batch transfer
-        const bridgeTransferInvalidBatchTransfer = bridge.transferToERC(
-            currentValidatorSetArgs,
-            signatures,
-            [],
-            toAddresses,
-            amounts,
-            batchNonce+1
-        );
-        await expect(bridgeTransferInvalidBatchTransfer).to.be.revertedWith("Invalid batch.")
+        // const invalidRootSignature = bridge.transferToERC(
+        //     currentValidatorSetArgs,
+        //     invalidSignature,
+        //     validTransfers,
+        //     root,
+        //     proofTwo,
+        //     proofFlagsTwo,
+        //     batchNonce + 1
+        // )
+        // await expect(invalidRootSignature).to.be.revertedWith("Invalid validator set signature.")
 
-        // invalid transfer bad batch signature
-        const signaturesInvalidBatchSignatures = await generateSignatures(signers, messageHash);
-        signaturesInvalidBatchSignatures[5].r = signaturesInvalidBatchSignatures[0].r
+        // // send invalid transfer (due to batch nonce)
+        // const nonPresentTransfer = bridge.transferToERC(
+        //     currentValidatorSetArgs,
+        //     signatures,
+        //     validTransfers,
+        //     root,
+        //     proof,
+        //     proofFlags,
+        //     batchNonce + 1
+        // )
+        // await expect(nonPresentTransfer).to.be.revertedWith("Invalid transfers proof.")
 
-        const bridgeTransferInvalidBatchSignatures = bridge.transferToERC(
-            currentValidatorSetArgs,
-            signaturesInvalidBatchSignatures,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce + 1
-        );
-        await expect(bridgeTransferInvalidBatchSignatures).to.be.revertedWith("Invalid validator set signature.")
+        // const transfersThree = [...Array(30).keys()].map(_ => {
+        //     return {
+        //         'from': token.address,
+        //         'to': ethers.Wallet.createRandom().address,
+        //         'amount': randomInteger(maxTokenSupply + 100, maxTokenSupply + 10000),
+        //         'fee': randomInteger(1, 10)
+        //     }
+        // })
 
-        // valid transfer 2
-        const messageHashValid = generateBatchTransferHash(
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce + 1,
-            validatorSetHash,
-            "transfer"
-        );
-        const signaturesValid = await generateSignatures(signers, messageHashValid);
+        // const transferHashesThree = transfersThree.map(transfer => {
+        //     return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.fee, batchNonce + 1])
+        // }).map(keccak256)
 
-        await bridge.transferToERC(
-            currentValidatorSetArgs,
-            signaturesValid,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce + 1
-        );
-        const postWalletBalance = await token.balanceOf(toAddresses[0]);
-        expect(postWalletBalance).to.be.equal(ethers.BigNumber.from(amounts[0] * 2))
+        // const transferHashesSortedThree = [...transferHashesThree].sort(Buffer.compare)
 
-        const postPostVaultBalance = await token.balanceOf(vault.address);
-        expect(postPostVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply - amounts[0] * 2))
+        // // build merkle tree, generate proofs
+        // const merkleTreeThree = new MerkleTree(transferHashesSortedThree, keccak256, { hashLeaves: false, sortPairs: true });
+        // const rootThree = merkleTreeThree.getRoot();
+
+        // const proofLeavesThree = [transfersThree[0], transfersThree[15], transfersThree[29]].map(transfer => {
+        //     return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.fee, batchNonce + 1])
+        // }).map(keccak256).sort(Buffer.compare)
+        // const proofThree = merkleTreeThree.getMultiProof(proofLeavesThree);
+        // const proofFlagsThree = merkleTreeThree.getProofFlags(proofLeavesThree, proofThree);
+
+        // const transferOneIndexThree = transferHashesThree.map(transfer => transfer.toString('hex')).findIndex(transfer => transfer == proofLeavesThree[0].toString('hex'))
+        // const transferFifthTeenIndexThree = transferHashesThree.map(transfer => transfer.toString('hex')).findIndex(transfer => transfer == proofLeavesThree[1].toString('hex'))
+        // const transferThirtyIndexThree = transferHashesThree.map(transfer => transfer.toString('hex')).findIndex(transfer => transfer == proofLeavesThree[2].toString('hex'))
+        // const validTransfersThree = [transferOneIndexThree, transferFifthTeenIndexThree, transferThirtyIndexThree].map(index => transfersThree[index])
+
+        // // valid transfers, but amounts too big
+        // const signaturesThree = await generateSignatures(signers, rootThree);
+
+        // await bridge.transferToERC(
+        //     currentValidatorSetArgs,
+        //     signaturesThree,
+        //     validTransfersThree,
+        //     rootThree,
+        //     proofThree,
+        //     proofFlagsThree,
+        //     batchNonce + 1
+        // )
+
+        // for (const transfer of transfersThree) {
+        //     const initialAddressBalance = await token.balanceOf(transfer.to)
+        //     expect(initialAddressBalance).to.be.equal(ethers.BigNumber.from(0))
+        // }
+
+        // const postVaultBalanceThree = await token.balanceOf(vault.address);
+        // expect(postVaultBalanceThree).to.be.equal(ethers.BigNumber.from(maxTokenSupply - totalTransfered))
+
+        // // invalid validator set 
+        // const invalidValidatorSet = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
+        // invalidValidatorSet.powers[0] = 0
+
+        // const invalidValidatorSetTransfer = bridge.transferToERC(
+        //     invalidValidatorSet,
+        //     invalidSignature,
+        //     validTransfers,
+        //     root,
+        //     proofTwo,
+        //     proofFlagsTwo,
+        //     batchNonce + 2
+        // )
+
+        // await expect(invalidValidatorSetTransfer).to.be.revertedWith("Invalid currentValidatorSetHash.")
+
+        // // invalid validator set 2 
+        // const invalidValidatorSetTwo = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
+        // invalidValidatorSetTwo.powers.pop()
+
+        // const invalidValidatorSetTransferTwo = bridge.transferToERC(
+        //     invalidValidatorSetTwo,
+        //     invalidSignature,
+        //     validTransfers,
+        //     root,
+        //     proofTwo,
+        //     proofFlagsTwo,
+        //     batchNonce + 2
+        // )
+
+        // await expect(invalidValidatorSetTransferTwo).to.be.revertedWith("Mismatch array length.")
     });
 
     it("transferToNamada testing", async function () {
@@ -271,15 +355,6 @@ describe("Bridge", function () {
         const preNewWalletTokenBalance = await token.balanceOf(newWallet.address)
         expect(preNewWalletTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
 
-        const transfers = [...Array(2).keys()].map(_ => {
-            return {
-                'from': token.address,
-                'to': 'anamadaAddress',
-                'amount': 2950
-            }
-        })
-        
-        // authorize the bridge to move the tokens
         await token.connect(newWallet).approve(bridge.address, 6000)
 
         await bridge.connect(newWallet).transferToNamada(
@@ -293,9 +368,6 @@ describe("Bridge", function () {
         const updatedVaultBalance = await token.balanceOf(vault.address);
         expect(updatedVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
 
-        const whitelistLeftAmount = await bridge.getWhitelistAmountFor(token.address);
-        expect(whitelistLeftAmount).to.be.equal(ethers.BigNumber.from(14900 - 5900))
-        
         // invalid due to non-whitelisted token
         // will not revert but no token transfer happen
         await bridge.connect(newWallet).transferToNamada(
@@ -307,8 +379,21 @@ describe("Bridge", function () {
             numberOfConfirmations
         );
 
-        // invalid due to reached token whitelsit cap
+        const nonWhitelistedTokenBalance = await notWhitelistedToken.balanceOf(newWallet.address);
+        expect(nonWhitelistedTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
+
+        // invalid due to to high token amount transfer
         // will not revert but no token transfer happen
+        await bridge.connect(newWallet).transferToNamada(
+            [token.address],
+            tos,
+            [1000000],
+            numberOfConfirmations
+        );
+
+        const nonWhitelistedTokenBalanceTwo = await notWhitelistedToken.balanceOf(newWallet.address);
+        expect(nonWhitelistedTokenBalanceTwo).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
+
         await bridge.connect(newWallet).transferToNamada(
             [{
                 'from': token.address,
@@ -318,18 +403,20 @@ describe("Bridge", function () {
             numberOfConfirmations
         );
 
-        const updatedNewWalletbalanceTwo = await token.balanceOf(newWallet.address);
-        expect(updatedNewWalletbalanceTwo).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
+        const updatedNewWalletbalanceAfterInvalidTokenCap = await token.balanceOf(newWallet.address);
+        expect(updatedNewWalletbalanceAfterInvalidTokenCap).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
 
-        const updatedVaultBalanceTwoo = await token.balanceOf(vault.address);
-        expect(updatedVaultBalanceTwoo).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
+        // transfer invalid batch
+        const trasferInvalidBatch = bridge.connect(newWallet).transferToNamada(
+            fromAddresses,
+            tos,
+            [],
+            numberOfConfirmations
+        );
+        await expect(trasferInvalidBatch).to.be.revertedWith("Invalid batch.");
 
         const whitelistLeftAmountTwo = await bridge.getWhitelistAmountFor(token.address);
         expect(whitelistLeftAmountTwo).to.be.equal(ethers.BigNumber.from(14900 - 5900))
-        
-
-        const nonWhitelistedTokenBalance = await notWhitelistedToken.balanceOf(newWallet.address);
-        expect(nonWhitelistedTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
         
         // invalid  due to non enough funds
         await bridge.connect(newWallet).transferToNamada(
@@ -340,15 +427,15 @@ describe("Bridge", function () {
             }],
             numberOfConfirmations
         );
-        
-        const updatedNewWalletbalanceAfterInvalidTokenCap = await token.balanceOf(newWallet.address);
-        expect(updatedNewWalletbalanceAfterInvalidTokenCap).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
+
+        const balanceAfterInsuficientAmountTransaction = await token.balanceOf(newWallet.address);
+        expect(balanceAfterInsuficientAmountTransaction).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
 
         const updatedVaultBalanceTwo = await token.balanceOf(vault.address);
         expect(updatedVaultBalanceTwo).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
 
-        const nonWhitelistedTokenPreBalance = await notWhitelistedToken.balanceOf(randomAddress.address);
-        
+        const randomAddressPreBalance = await token.balanceOf(randomAddress.address);
+
         // partially valid 
         await bridge.connect(newWallet).transferToNamada(
             [{

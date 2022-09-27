@@ -277,5 +277,16 @@ describe("Governance", function () {
         const signaturesInvalid = await generateSignatures(bridgeSigners, messageHashInvalid)
         const updateBridgeWhitelistInvalidSignatureMessage = governance.updateBridgeWhitelist(currentValidatorSetArgs, [randomTokenAddress], [10000], signaturesInvalid)
         await expect(updateBridgeWhitelistInvalidSignatureMessage).to.be.revertedWith('Unauthorized.')
+
+        // invalid new whitelist length
+
+        const messageHashInvalidWhitelistLength = generateArbitraryHash(
+            ["uint8", "string", "address[]", "uint256[]", "uint256"],
+            [1, "updateBridgeWhitelist", [randomTokenAddress], [10000, 2000], 1]
+        )
+        const signaturesInvalidWhitelistLength = await generateSignatures(bridgeSigners, messageHashInvalidWhitelistLength)
+        
+        const invalidWhitelistLengthTx = governance.updateBridgeWhitelist(currentValidatorSetArgs, [randomTokenAddress], [10000, 2000], signaturesInvalidWhitelistLength)
+        await expect(invalidWhitelistLengthTx).to.be.revertedWith('Invalid inputs.')
     })
 })

@@ -81,7 +81,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         bool[] calldata _proofFlags,
         uint256 batchNonce
     ) external nonReentrant {
-        require(transferToERC20Nonce + 1 == batchNonce, "Invalid batchNonce");
+        require(transferToERC20Nonce + 1 == batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
 
         require(
@@ -90,17 +90,19 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
 
         require(
-        checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _poolRoot),
+            checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _poolRoot),
             "Invalid validator set signature."
         );
 
         bytes32[] memory leaves = new bytes32[](_transfers.length);
-        for (uint i = 0; i < _transfers.length; i++) {
+        for (uint256 i = 0; i < _transfers.length; i++) {
             bytes32 transferHash = _computeTransferHash(_transfers[i], batchNonce);
             leaves[i] = transferHash;
         }
 
-        require(MerkleProof.multiProofVerifyCalldata(_proof, _proofFlags, _poolRoot, leaves), "Invalid transfer/s.");
+        bytes32 root = MerkleProof.processMultiProof(_proof, _proofFlags, leaves);
+
+        require(_poolRoot == root, "Invalid transfers proof.");
 
         transferToERC20Nonce = transferToERC20Nonce + 1;
 
@@ -110,6 +112,9 @@ contract Bridge is IBridge, ReentrancyGuard {
         ERC20Transfer[] memory validTransfers = new ERC20Transfer[](_transfers.length);
 
         validTransfers = vault.batchTransferToERC20(_transfers);
+        for (uint256 i = 0; i < validTransfers.length; i++) {
+            tokenWhiteList[validTransfers[i].from] += validTransfers[i].amount;
+        }
 
         emit TransferToERC(transferToERC20Nonce, validTransfers);
     }
@@ -207,13 +212,15 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _computeTransferHash(ERC20Transfer calldata transfer, uint256 nonce) internal view returns (bytes32) {
-        return keccak256(
+        return
+            keccak256(
                 abi.encodePacked(
                     version,
                     "transfer",
                     transfer.from,
                     transfer.to,
                     transfer.amount,
+                    transfer.feeFrom,
                     transfer.fee,
                     nonce
                 )
@@ -227,18 +234,6 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 nonce
     ) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(version, "bridge", validators, powers, nonce));
-    }
-
-    function computeBatchHash(
-        address[] calldata _froms,
-        address[] calldata _tos,
-        uint256[] calldata _amounts,
-        uint256 _batchNonce
-    ) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(version, "transfer", _froms, _tos, _amounts, _batchNonce, currentValidatorSetHash)
-            );
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
@@ -271,18 +266,36 @@ contract Bridge is IBridge, ReentrancyGuard {
         return _isValidValidatorSetArg(validatorSetArgs) && validatorSetArgs.validators.length == signature.length;
     }
 
-    function _isValidBatch(
-        uint256 _froms,
-        uint256 _tos,
-        uint256 _amounts,
-        uint256 _fees
-    ) internal pure returns (bool) {
-        return _froms == _tos && _froms == _amounts && _froms == _fees;
-    }
-
     modifier onlyLatestGovernanceContract() {
         address governanceAddress = proxy.getContract("governance");
         require(msg.sender == governanceAddress, "Invalid caller.");
         _;
     }
+
+    // function processMultiProof(
+    //     bytes32[] memory proof,
+    //     bool[] memory proofFlags,
+    //     bytes32[] memory leaves
+    // ) internal pure returns (bytes32 merkleRoot) {
+    //     uint256 totalHashes = proof.length + leaves.length;
+    //     bytes32[] memory hashes = new bytes32[](totalHashes);
+    //     uint256 leafPos = 0;
+    //     uint256 proofPos = 0;
+    //     hashes[0] = proofFlags[0] ? leaves[leafPos++] : proof[proofPos++];
+
+    //     for (uint256 i = 1; i < totalHashes; i++) {
+    //         bytes32 a = proofFlags[i] ? leaves[leafPos++] : proof[proofPos++];
+    //         hashes[i] = _hashPair(hashes[i - 1], a);
+    //     }
+
+    //     return hashes[totalHashes - 1];
+    // }
+
+    // function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
+    //     assembly {
+    //         mstore(0x00, a)
+    //         mstore(0x20, b)
+    //         value := keccak256(0x00, 0x40)
+    //     }
+    // }
 }
