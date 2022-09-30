@@ -35,6 +35,7 @@ contract Proxy is IProxy {
 
     function upgradeContract(string calldata _name, address _address) external override onlyLatestGovernanceContract {
         address oldAddress = _getContract(_name);
+        require(owner == address(0), "Proxy must be initialized.");
         require(oldAddress != address(0), "Invalid contract address.");
         require(_address != address(0), "Invalid address.");
         require(oldAddress != _address, "Address must be different.");

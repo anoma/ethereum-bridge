@@ -51,7 +51,7 @@ describe("Proxy", function () {
   });
 
   it("Upgrade testing", async function () {
-    const [_owner, addr1] = await ethers.getSigners();
+    const [_owner, addr1, addr2] = await ethers.getSigners();
 
     const Proxy = await ethers.getContractFactory("Proxy");
     const proxy = await Proxy.deploy();
@@ -59,19 +59,26 @@ describe("Proxy", function () {
 
     expect(await proxy.getContract("governance")).to.equal(ethers.constants.AddressZero);
 
-    // invalid upgrade not exist
-    const upgradeInvalidNotExist = proxy.upgradeContract("governance", addr1.address);
-    await expect(upgradeInvalidNotExist).to.be.revertedWith("Invalid contract address.")
-
     // valid add contract
     await proxy.addContract("governance", addr1.address);
 
+    // invalid not initialized
+    const upgradeInvalidNotInit = proxy.upgradeContract("governance", ethers.constants.AddressZero);
+    await expect(upgradeInvalidNotInit).to.be.revertedWith("Proxy must be initialized.")
+
+    // init proxy
+    await proxy.completeContractInit();
+
+    // invalid upgrade not exist
+    const upgradeInvalidNotExist = proxy.connect(addr1).upgradeContract("noexist", addr1.address);
+    await expect(upgradeInvalidNotExist).to.be.revertedWith("Invalid contract address.")
+
     // invalid upgrade zero address
-    const upgradeInvalidZeroAddress = proxy.upgradeContract("governance", ethers.constants.AddressZero);
+    const upgradeInvalidZeroAddress = proxy.connect(addr1).upgradeContract("governance", ethers.constants.AddressZero);
     await expect(upgradeInvalidZeroAddress).to.be.revertedWith("Invalid address.")
 
     // invalid upgrade same address
-    const upgradeInvalidSameAddress = proxy.upgradeContract("governance", addr1.address);
+    const upgradeInvalidSameAddress = proxy.connect(addr1).upgradeContract("governance", addr1.address);
     await expect(upgradeInvalidSameAddress).to.be.revertedWith("Address must be different")
   })
 
