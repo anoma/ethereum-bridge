@@ -414,4 +414,53 @@ describe("Bridge", function () {
         const nonWhitelistedTokenPostBalance = await notWhitelistedToken.balanceOf(randomAddress.address);
         expect(nonWhitelistedTokenPostBalance).to.be.equal(nonWhitelistedTokenPreBalance)
     });
+
+    it.only("TrasferToNamada event testing", async function() {
+        const [newWallet, randomAddress] = await ethers.getSigners()
+        const numberOfConfirmations = 100;
+
+        const preBridgeBalance = await token.balanceOf(vault.address);
+        expect(preBridgeBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
+
+        const preNewWalletTokenBalance = await token.balanceOf(newWallet.address)
+        expect(preNewWalletTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
+
+        const transfers = [...Array(2).keys()].map(_ => {
+            return {
+                'from': token.address,
+                'to': 'anamadaAddress',
+                'amount': 2950
+            }
+        })
+        
+        // authorize the bridge to move the tokens
+        await token.connect(newWallet).approve(bridge.address, 6000)
+
+        const tx = await bridge.connect(newWallet).transferToNamada(
+            transfers,
+            numberOfConfirmations
+        );
+
+        const receipt = await tx.wait()
+
+        const events = receipt.events.filter(event => event.event != undefined)
+
+        events.forEach(event => {
+            expect(event.event).to.be.equal('TransferToNamada')
+            expect(event.eventSignature).to.be.equal('TransferToNamada(uint256,(address,uint256,string)[],uint256)')
+            expect(event.args.length).to.be.equal(3)
+
+            expect(event.args[0]).to.be.equal(ethers.BigNumber.from(1))
+
+            expect(event.args[1].length).to.be.equal(2)
+            expect(event.args[1][0].from).to.be.equal(token.address)
+            expect(event.args[1][0].to).to.be.equal('anamadaAddress')
+            expect(event.args[1][0].amount).to.be.equal(ethers.BigNumber.from(2950))
+            expect(event.args[1][1].from).to.be.equal(token.address)
+            expect(event.args[1][1].to).to.be.equal('anamadaAddress')
+            expect(event.args[1][1].amount).to.be.equal(ethers.BigNumber.from(2950))
+
+            expect(event.args[2]).to.be.equal(ethers.BigNumber.from(100))
+        })    
+    })
 })
