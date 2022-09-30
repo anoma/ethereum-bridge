@@ -307,6 +307,27 @@ describe("Bridge", function () {
             numberOfConfirmations
         );
 
+        // invalid due to reached token whitelsit cap
+        // will not revert but no token transfer happen
+        await bridge.connect(newWallet).transferToNamada(
+            [{
+                'from': token.address,
+                'to': 'anamadaAddress',
+                'amount': 14900 - 5900 + 1
+            }],
+            numberOfConfirmations
+        );
+
+        const updatedNewWalletbalanceTwo = await token.balanceOf(newWallet.address);
+        expect(updatedNewWalletbalanceTwo).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
+
+        const updatedVaultBalanceTwoo = await token.balanceOf(vault.address);
+        expect(updatedVaultBalanceTwoo).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
+
+        const whitelistLeftAmountTwo = await bridge.getWhitelistAmountFor(token.address);
+        expect(whitelistLeftAmountTwo).to.be.equal(ethers.BigNumber.from(14900 - 5900))
+        
+
         const nonWhitelistedTokenBalance = await notWhitelistedToken.balanceOf(newWallet.address);
         expect(nonWhitelistedTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
         
