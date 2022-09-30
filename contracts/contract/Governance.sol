@@ -49,10 +49,8 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked("bridge")), "Invalid contract name.");
 
         bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeContract", _name, _address));
-        address bridgeAddress = proxy.getContract("bridge");
-        IBridge bridge = IBridge(bridgeAddress);
 
-        require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
+        require(authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         proxy.upgradeContract(_name, _address);
     }
@@ -60,7 +58,7 @@ contract Governance is IGovernance, ReentrancyGuard {
     function upgradeBridgeContract(
         ValidatorSetArgs calldata _validators,
         Signature[] calldata _signatures,
-        address payable _address
+        address _address
     ) external {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(abi.encodePacked(version, "upgradeBridgeContract", "bridge", _address));
@@ -81,10 +79,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         require(_address != address(0), "Invalid address.");
         bytes32 messageHash = keccak256(abi.encodePacked(version, "addContract", _name, _address));
 
-        address bridgeAddress = proxy.getContract("bridge");
-        IBridge bridge = IBridge(bridgeAddress);
-
-        require(bridge.authorize(_validators, _signatures, messageHash), "Unauthorized.");
+        require(authorize(_validators, _signatures, messageHash), "Unauthorized.");
 
         proxy.addContract(_name, _address);
     }
@@ -188,26 +183,6 @@ contract Governance is IGovernance, ReentrancyGuard {
             _signature.s
         );
         return error == ECDSA.RecoverError.NoError && _signer == signer;
-    }
-
-    function computeWithdrawHash(
-        ValidatorSetArgs calldata _validatorSetArgs,
-        address payable _addr,
-        address[] calldata _tokens
-    ) internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    version,
-                    "withdraw",
-                    _validatorSetArgs.validators,
-                    _validatorSetArgs.powers,
-                    _validatorSetArgs.nonce,
-                    _addr,
-                    _tokens,
-                    withdrawNonce
-                )
-            );
     }
 
     function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
