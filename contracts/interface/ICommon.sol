@@ -13,4 +13,10 @@ interface ICommon {
         bytes32 s;
         uint8 v;
     }
+
+    struct NamadaTransfer {
+        address from;
+        uint256 amount;
+        string to;
+    }
 }

@@ -263,9 +263,6 @@ describe("Bridge", function () {
 
     it("transferToNamada testing", async function () {
         const [newWallet, randomAddress] = await ethers.getSigners()
-        const fromAddresses = [token.address, notWhitelistedToken.address]
-        const transferAmount = 500;
-        const tos = ["anamadaAddress"]
         const numberOfConfirmations = 100;
 
         const preBridgeBalance = await token.balanceOf(vault.address);
@@ -273,12 +270,20 @@ describe("Bridge", function () {
 
         const preNewWalletTokenBalance = await token.balanceOf(newWallet.address)
         expect(preNewWalletTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
+
+        const transfers = [...Array(2).keys()].map(_ => {
+            return {
+                'from': token.address,
+                'to': 'anamadaAddress',
+                'amount': 2950
+            }
+        })
         
+        // authorize the bridge to move the tokens
         await token.connect(newWallet).approve(bridge.address, 6000)
+
         await bridge.connect(newWallet).transferToNamada(
-            [token.address],
-            tos,
-            [5900],
+            transfers,
             numberOfConfirmations
         );
 
@@ -287,69 +292,63 @@ describe("Bridge", function () {
 
         const updatedVaultBalance = await token.balanceOf(vault.address);
         expect(updatedVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
+
+        const whitelistLeftAmount = await bridge.getWhitelistAmountFor(token.address);
+        expect(whitelistLeftAmount).to.be.equal(ethers.BigNumber.from(14900 - 5900))
         
         // invalid due to non-whitelisted token
         // will not revert but no token transfer happen
         await bridge.connect(newWallet).transferToNamada(
-            [notWhitelistedToken.address],
-            tos,
-            [transferAmount],
+            [{
+                'from': notWhitelistedToken.address,
+                'to': 'anamadaAddress',
+                'amount': 2950
+            }],
             numberOfConfirmations
         );
 
         const nonWhitelistedTokenBalance = await notWhitelistedToken.balanceOf(newWallet.address);
         expect(nonWhitelistedTokenBalance).to.be.equal(ethers.BigNumber.from(walletTokenAmount))
-
+        
+        // invalid  due to non enough funds
         await bridge.connect(newWallet).transferToNamada(
-            [token.address],
-            tos,
-            [15000],
+            [{
+                'from': token.address,
+                'to': 'anamadaAddress',
+                'amount': 101
+            }],
             numberOfConfirmations
         );
         
         const updatedNewWalletbalanceAfterInvalidTokenCap = await token.balanceOf(newWallet.address);
         expect(updatedNewWalletbalanceAfterInvalidTokenCap).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
 
-        // transfer invalid batch
-        const trasferInvalidBatch =  bridge.connect(newWallet).transferToNamada(
-            fromAddresses,
-            tos,
-            [],
-            numberOfConfirmations
-        );
-        await expect(trasferInvalidBatch).to.be.revertedWith("Invalid batch.");
+        const updatedVaultBalanceTwo = await token.balanceOf(vault.address);
+        expect(updatedVaultBalanceTwo).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
 
-        // transfer invalid insufficient amount
-        await bridge.connect(newWallet).transferToNamada(
-            [token.address],
-            tos,
-            [200],
-            numberOfConfirmations
-        );
-        
-        const balanceAfterInsuficientAmountTransaction = await token.balanceOf(newWallet.address);
-        expect(balanceAfterInsuficientAmountTransaction).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900))
-
-        const vaultBalanceAfterInsuficientAmountTransaction = await token.balanceOf(vault.address);
-        expect(vaultBalanceAfterInsuficientAmountTransaction).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900))
-
-        const randomAddressPreBalance = await token.balanceOf(randomAddress.address);
+        const nonWhitelistedTokenPreBalance = await notWhitelistedToken.balanceOf(randomAddress.address);
         
         // partially valid 
         await bridge.connect(newWallet).transferToNamada(
-            [token.address, token.address],
-            tos.concat([randomAddress]),
-            [100, 50],
+            [{
+                'from': token.address,
+                'to': 'anamadaAddress',
+                'amount': 50
+            },{
+                'from': notWhitelistedToken.address,
+                'to': 'randomAddress',
+                'amount': 100
+            }],
             numberOfConfirmations
         );
 
         const updatedNewWalletbalanceAfterValidTrasfer = await token.balanceOf(newWallet.address);
-        expect(updatedNewWalletbalanceAfterValidTrasfer).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900 - 100))
+        expect(updatedNewWalletbalanceAfterValidTrasfer).to.be.equal(ethers.BigNumber.from(walletTokenAmount - 5900 - 50))
 
         const updatedVaultBalanceAfterTransfer = await token.balanceOf(vault.address);
-        expect(updatedVaultBalanceAfterTransfer).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900 + 100))
+        expect(updatedVaultBalanceAfterTransfer).to.be.equal(ethers.BigNumber.from(maxTokenSupply + 5900 + 50))
 
-        const randomAddressPostBalance = await token.balanceOf(randomAddress.address);
-        expect(randomAddressPostBalance).to.be.equal(randomAddressPreBalance)
+        const nonWhitelistedTokenPostBalance = await notWhitelistedToken.balanceOf(randomAddress.address);
+        expect(nonWhitelistedTokenPostBalance).to.be.equal(nonWhitelistedTokenPreBalance)
     });
 })
