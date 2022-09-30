@@ -135,8 +135,8 @@ describe("Governance", function () {
             [1, "upgradeContract", contractName, newContractAddress]
         )
 
-        const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
-        const signatures = await generateSignatures(bridgeSigners, messageHash);
+        const currentValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 0)
+        const signatures = await generateSignatures(governanceSigners, messageHash);
         await governance.upgradeContract(currentValidatorSetArgs, signatures, contractName, newContractAddress)
 
         const newAddress = await proxy.getContract(contractName);
@@ -178,8 +178,8 @@ describe("Governance", function () {
             [1, "addContract", contractName, newContractAddress]
         );
 
-        const currentValidatorSetArgs = generateValidatorSetArgs(bridgeValidatorsAddresses, bridgeNormalizedPowers, 0)
-        const signatures = await generateSignatures(bridgeSigners, messageHash);
+        const currentValidatorSetArgs = generateValidatorSetArgs(governanceValidatorsAddresses, governanceNormalizedPowers, 0)
+        const signatures = await generateSignatures(governanceSigners, messageHash);
 
         // invalid add contract zero address
         const addContractInvalidZeroAddress = governance.addContract(currentValidatorSetArgs, signatures, contractName, ethers.constants.AddressZero)
@@ -190,12 +190,12 @@ describe("Governance", function () {
             ["uint8", "string", "string", "address"],
             [1, "test", contractName, newContractAddress]
         );
-        const signaturesInvalidMessageHash = await generateSignatures(bridgeSigners, messageHashInvalidMessageHash);
+        const signaturesInvalidMessageHash = await generateSignatures(governanceSigners, messageHashInvalidMessageHash);
         const addContractInvalidInvalidMessageHash = governance.addContract(currentValidatorSetArgs, signaturesInvalidMessageHash, contractName, newContractAddress)
         await expect(addContractInvalidInvalidMessageHash).to.be.revertedWith("Unauthorized.")
 
         // invalid add contract invalid signatures
-        let signaturesInvalidSignatures = await generateSignatures(bridgeSigners, messageHash);
+        let signaturesInvalidSignatures = await generateSignatures(governanceSigners, messageHash);
         signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
         signaturesInvalidSignatures[2].s = signaturesInvalidSignatures[0].s
         signaturesInvalidSignatures[2].v = signaturesInvalidSignatures[0].v
