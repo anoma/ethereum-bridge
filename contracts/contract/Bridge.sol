@@ -22,7 +22,7 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
-    mapping(address => uint256) public tokenWhiteList;
+    mapping(address => uint256) private tokenWhiteList;
 
     IProxy private proxy;
 
@@ -112,41 +112,29 @@ contract Bridge is IBridge, ReentrancyGuard {
         emit TransferToERC(transferToERC20Nonce, validFroms, validTos, validAmounts);
     }
 
-    function transferToNamada(
-        address[] calldata _froms,
-        string[] calldata _tos,
-        uint256[] calldata _amounts,
-        uint256 confirmations
-    ) external nonReentrant {
-        require(_froms.length == _amounts.length, "Invalid batch.");
-
+    // this function assumes that the the tokens are transfered from a ERC20 compliant contract
+    function transferToNamada(NamadaTransfer[] calldata _tranfers, uint256 confirmations) external nonReentrant {
         address vaultAddress = proxy.getContract("vault");
 
-        address[] memory validFroms = new address[](_froms.length);
-        string[] memory validTos = new string[](_tos.length);
-        uint256[] memory validAmounts = new uint256[](_amounts.length);
+        NamadaTransfer[] memory validTransfers = new NamadaTransfer[](_tranfers.length);
 
-        for (uint256 i = 0; i < _amounts.length; ++i) {
-            if (tokenWhiteList[_froms[i]] != 0 || tokenWhiteList[_froms[i]] >= _amounts[i]) {
-                emit InvalidTransferToNamada(_froms[i], _tos[i], _amounts[i]);
+        for (uint256 i = 0; i < _tranfers.length; ++i) {
+            if (tokenWhiteList[_tranfers[i].from] == 0 || _tranfers[i].amount >= tokenWhiteList[_tranfers[i].from]) {
+                emit InvalidTransferToNamada(_tranfers[i].from, _tranfers[i].to, _tranfers[i].amount);
+                continue;
             }
 
-            uint256 preBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
+            tokenWhiteList[_tranfers[i].from] -= _tranfers[i].amount;
 
-            try IERC20(_froms[i]).transferFrom(msg.sender, vaultAddress, _amounts[i]) {
-                uint256 postBalance = IERC20(_froms[i]).balanceOf(vaultAddress);
-                if (postBalance > preBalance) {
-                    validFroms[i] = _froms[i];
-                    validTos[i] = _tos[i];
-                    validAmounts[i] = postBalance - preBalance;
-                }
+            try IERC20(_tranfers[i].from).transferFrom(msg.sender, vaultAddress, _tranfers[i].amount) {
+                validTransfers[i] = _tranfers[i];
             } catch {
-                emit InvalidTransferToNamada(_froms[i], _tos[i], _amounts[i]);
+                emit InvalidTransferToNamada(_tranfers[i].from, _tranfers[i].to, _tranfers[i].amount);
             }
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
-        emit TransferToNamada(transferToNamadaNonce, validFroms, validTos, validAmounts, confirmations);
+        emit TransferToNamada(transferToNamadaNonce, validTransfers, confirmations);
     }
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
@@ -182,6 +170,10 @@ contract Bridge is IBridge, ReentrancyGuard {
             }
         }
         return powerAccumulator >= thresholdVotingPower;
+    }
+
+    function getWhitelistAmountFor(address tokenAddress) external view returns (uint256) {
+        return tokenWhiteList[tokenAddress];
     }
 
     function isValidSignature(

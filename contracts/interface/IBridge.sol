@@ -4,13 +4,7 @@ pragma solidity ^0.8.17;
 import "./ICommon.sol";
 
 interface IBridge is ICommon {
-    event TransferToNamada(
-        uint256 indexed nonce,
-        address[] froms,
-        string[] tos,
-        uint256[] amounts,
-        uint256 confirmations
-    );
+    event TransferToNamada(uint256 indexed nonce, NamadaTransfer[] trasfers, uint256 confirmations);
 
     event InvalidTransferToNamada(address indexed from, string indexed to, uint256 amount);
 
@@ -22,12 +16,7 @@ interface IBridge is ICommon {
         bytes32 message
     ) external view returns (bool);
 
-    function transferToNamada(
-        address[] calldata _froms,
-        string[] calldata _tos,
-        uint256[] calldata _amounts,
-        uint256 confirmations
-    ) external;
+    function transferToNamada(NamadaTransfer[] calldata trasfers, uint256 confirmations) external;
 
     function transferToERC(
         ValidatorSetArgs calldata _validatorSetArgs,
