@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract Bridge is IBridge, ReentrancyGuard {
     uint8 private immutable version;
@@ -45,8 +46,8 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         version = _version;
         thresholdVotingPower = _thresholdVotingPower;
-        currentValidatorSetHash = computeValidatorSetHash(_currentValidators, _currentPowers, 0);
-        nextValidatorSetHash = computeValidatorSetHash(_nextValidators, _nextPowers, 0);
+        currentValidatorSetHash = _computeValidatorSetHash(_currentValidators, _currentPowers, 0);
+        nextValidatorSetHash = _computeValidatorSetHash(_nextValidators, _nextPowers, 0);
 
         for (uint256 i = 0; i < _tokenList.length; ++i) {
             address tokenAddress = _tokenList[i];
@@ -64,7 +65,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     ) external view returns (bool) {
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
         require(
-            computeValidatorSetHash(_validatorSetArgs) == currentValidatorSetHash,
+            _computeValidatorSetHash(_validatorSetArgs) == currentValidatorSetHash,
             "Invalid currentValidatorSetHash."
         );
 
@@ -74,42 +75,48 @@ contract Bridge is IBridge, ReentrancyGuard {
     function transferToERC(
         ValidatorSetArgs calldata _validatorSetArgs,
         Signature[] calldata _signatures,
-        address[] calldata _froms,
-        address[] calldata _tos,
-        uint256[] calldata _amounts,
-        uint256 _batchNonce
+        ERC20Transfer[] calldata _transfers,
+        bytes32 _poolRoot,
+        bytes32[] calldata _proof,
+        bool[] calldata _proofFlags,
+        uint256 batchNonce
     ) external nonReentrant {
-        require(
-            _batchNonce > transferToERC20Nonce && transferToERC20Nonce + MAX_NONCE_INCREMENT > _batchNonce,
-            "Invalid nonce."
-        );
+        require(transferToERC20Nonce + 1 == batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
 
         require(
-            computeValidatorSetHash(_validatorSetArgs) == currentValidatorSetHash,
+            _computeValidatorSetHash(_validatorSetArgs) == currentValidatorSetHash,
             "Invalid currentValidatorSetHash."
         );
-        require(_isValidBatch(_froms.length, _tos.length, _amounts.length), "Invalid batch.");
-
-        bytes32 batchHash = computeBatchHash(_froms, _tos, _amounts, _batchNonce);
 
         require(
-            checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, batchHash),
+            checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _poolRoot),
             "Invalid validator set signature."
         );
 
-        transferToERC20Nonce = _batchNonce;
+        bytes32[] memory leaves = new bytes32[](_transfers.length);
+        for (uint256 i = 0; i < _transfers.length; i++) {
+            bytes32 transferHash = _computeTransferHash(_transfers[i], batchNonce);
+            leaves[i] = transferHash;
+        }
+
+        bytes32 root = MerkleProof.processMultiProof(_proof, _proofFlags, leaves);
+
+        require(_poolRoot == root, "Invalid transfers proof.");
+
+        transferToERC20Nonce = transferToERC20Nonce + 1;
 
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
 
-        address[] memory validFroms = new address[](_froms.length);
-        address[] memory validTos = new address[](_tos.length);
-        uint256[] memory validAmounts = new uint256[](_amounts.length);
+        ERC20Transfer[] memory validTransfers = new ERC20Transfer[](_transfers.length);
 
-        (validFroms, validTos, validAmounts) = vault.batchTransferToERC20(_froms, _tos, _amounts);
+        validTransfers = vault.batchTransferToERC20(_transfers);
+        for (uint256 i = 0; i < validTransfers.length; i++) {
+            tokenWhiteList[validTransfers[i].from] += validTransfers[i].amount;
+        }
 
-        emit TransferToERC(transferToERC20Nonce, validFroms, validTos, validAmounts);
+        emit TransferToERC(transferToERC20Nonce, validTransfers);
     }
 
     // this function assumes that the the tokens are transfered from a ERC20 compliant contract
@@ -191,7 +198,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         return error == ECDSA.RecoverError.NoError && _signer == signer;
     }
 
-    function computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
+    function _computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
@@ -204,25 +211,29 @@ contract Bridge is IBridge, ReentrancyGuard {
             );
     }
 
+    function _computeTransferHash(ERC20Transfer calldata transfer, uint256 nonce) internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    version,
+                    "transfer",
+                    transfer.from,
+                    transfer.to,
+                    transfer.amount,
+                    transfer.feeFrom,
+                    transfer.fee,
+                    nonce
+                )
+            );
+    }
+
     // duplicate since calldata can't be used in constructor
-    function computeValidatorSetHash(
+    function _computeValidatorSetHash(
         address[] memory validators,
         uint256[] memory powers,
         uint256 nonce
     ) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(version, "bridge", validators, powers, nonce));
-    }
-
-    function computeBatchHash(
-        address[] calldata _froms,
-        address[] calldata _tos,
-        uint256[] calldata _amounts,
-        uint256 _batchNonce
-    ) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(version, "transfer", _froms, _tos, _amounts, _batchNonce, currentValidatorSetHash)
-            );
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
@@ -253,14 +264,6 @@ contract Bridge is IBridge, ReentrancyGuard {
         returns (bool)
     {
         return _isValidValidatorSetArg(validatorSetArgs) && validatorSetArgs.validators.length == signature.length;
-    }
-
-    function _isValidBatch(
-        uint256 _froms,
-        uint256 _tos,
-        uint256 _amounts
-    ) internal pure returns (bool) {
-        return _froms == _tos && _froms == _amounts;
     }
 
     modifier onlyLatestGovernanceContract() {

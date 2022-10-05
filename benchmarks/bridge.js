@@ -1,5 +1,7 @@
 const { ethers, network } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateBatchTransferHash } = require("../test/utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, ourMultiProof } = require("../test/utils/utilities")
+const { MerkleTree } = require('merkletreejs');
+const keccak256 = require('keccak256');
 
 const trasferToERC20 = async function (index) {
     const [_, governanceAddress, anotherAddress] = await ethers.getSigners();
@@ -36,32 +38,49 @@ const trasferToERC20 = async function (index) {
 
     await network.provider.send("evm_mine")
 
-    const toAddresses = [...Array(index).keys()].map(_ => ethers.Wallet.createRandom().address)
-    const fromAddresses = [...Array(index).keys()].map(_ => token.address)
-    const amounts = [...Array(index).keys()].map(_ => 10)
-    const validatorSetHash = await bridge.currentValidatorSetHash();
-    const batchNonce = 1;
-
     const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
-    const messageHash = generateBatchTransferHash(
-        fromAddresses,
-        toAddresses,
-        amounts,
-        batchNonce,
-        validatorSetHash,
-        "transfer"
-    );
-    const signatures = await generateSignatures(signers, messageHash);
+
+    const transfers = [...Array(index * 2).keys()].map(index => {
+        return {
+            'from': token.address,
+            'to': ethers.Wallet.createRandom().address,
+            'amount': 5,
+            'feeFrom': 'aNamadaAddress',
+            'fee': 1
+        }
+    })
+
+    const transferHashes = transfers.map(transfer => {
+        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
+    }).map(keccak256)
+
+    const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
+
+    // build merkle tree, generate proofs
+    const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
+
+    const proofLeaves = transfers.slice(0, index).map(transfer => {
+        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
+    }).map(keccak256).sort(Buffer.compare)
+
+    const [root, proof, proofFlags] = ourMultiProof(merkleTree, proofLeaves)
+
+    const validTransfers = proofLeaves.map(proof => {
+        return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
+    }).map(index => transfers[index])
+
+    const signatures = await generateSignatures(signers, root);
 
     try {
         const tx = await bridge.connect(anotherAddress).transferToERC(
             currentValidatorSetArgs,
             signatures,
-            fromAddresses,
-            toAddresses,
-            amounts,
-            batchNonce
-        );
+            validTransfers,
+            root,
+            proof,
+            proofFlags,
+            1
+        )
 
         const receipt = await tx.wait()
         const txGas = Number(receipt.gasUsed);

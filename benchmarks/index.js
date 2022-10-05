@@ -9,8 +9,8 @@ const benchmarks = [
         extra: { label: "Gas Used", name: "benchmarks/images/updateValidatorsSet-graph.png" }
     }],
     [trasferToERC20, {
-        from: 1,
-        to: 20,
+        from: 5,
+        to: 50,
         extra: { label: "Gas Used", name: "benchmarks/images/trasferToERC20-graph.png" }
     }],
     [updateValidatorSetBenchmarkFixed, {

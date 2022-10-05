@@ -8,7 +8,7 @@ interface IBridge is ICommon {
 
     event InvalidTransferToNamada(address indexed from, string indexed to, uint256 amount);
 
-    event TransferToERC(uint256 indexed nonce, address[] froms, address[] tos, uint256[] amounts);
+    event TransferToERC(uint256 indexed nonce, ERC20Transfer[] transfers);
 
     function authorize(
         ValidatorSetArgs calldata validatorSetArgs,
@@ -21,10 +21,11 @@ interface IBridge is ICommon {
     function transferToERC(
         ValidatorSetArgs calldata _validatorSetArgs,
         Signature[] calldata _signatures,
-        address[] calldata _froms,
-        address[] calldata _tos,
-        uint256[] calldata _amounts,
-        uint256 _batchNonce
+        ERC20Transfer[] calldata _transfers,
+        bytes32 _poolRoot,
+        bytes32[] calldata _proof,
+        bool[] calldata _proofFlags,
+        uint256 batchNonce
     ) external;
 
     function updateTokenWhitelist(address[] calldata tokens, uint256[] calldata tokensCap) external;

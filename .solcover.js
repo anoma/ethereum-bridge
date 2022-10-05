@@ -1,3 +1,4 @@
 module.exports = {
-    configureYulOptimizer: true
+    configureYulOptimizer: true,
+    skipFiles: ['contracts/contract/Token.sol']
 };

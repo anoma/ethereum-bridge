@@ -13,34 +13,22 @@ contract Vault is IVault {
         proxy = IProxy(_proxy);
     }
 
-    function batchTransferToERC20(
-        address[] calldata _froms,
-        address[] calldata _tos,
-        uint256[] calldata _amounts
-    )
+    function batchTransferToERC20(ERC20Transfer[] memory _transfers)
         external
         onlyLatestBridgeContract
-        returns (
-            address[] memory froms,
-            address[] memory tos,
-            uint256[] memory amounts
-        )
+        returns (ERC20Transfer[] memory)
     {
-        address[] memory validFroms = new address[](_froms.length);
-        address[] memory validTos = new address[](_tos.length);
-        uint256[] memory validAmounts = new uint256[](_amounts.length);
+        ERC20Transfer[] memory validTransfers = new ERC20Transfer[](_transfers.length);
 
-        for (uint256 i = 0; i < _amounts.length; ++i) {
-            try IERC20(_froms[i]).transfer(_tos[i], _amounts[i]) {
-                validFroms[i] = _froms[i];
-                validTos[i] = _tos[i];
-                validAmounts[i] = _amounts[i];
+        for (uint256 i = 0; i < _transfers.length; ++i) {
+            try IERC20(_transfers[i].from).transfer(_transfers[i].to, _transfers[i].amount) {
+                validTransfers[i] = _transfers[i];
             } catch {
-                emit InvalidTransfer(_froms[i], _tos[i], _amounts[i]);
+                emit InvalidTransfer(_transfers[i]);
             }
         }
 
-        return (validFroms, validTos, validAmounts);
+        return validTransfers;
     }
 
     modifier onlyLatestBridgeContract() {
