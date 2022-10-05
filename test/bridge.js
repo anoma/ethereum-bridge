@@ -116,7 +116,6 @@ describe("Bridge", function () {
     });
 
     it("transferToERC20 testing", async function () {
-        const [_, test] = await ethers.getSigners()
         const batchNonce = 1;
 
         const intialVaultBalance = await token.balanceOf(vault.address);
@@ -127,11 +126,7 @@ describe("Bridge", function () {
         const transfers = [...Array(30).keys()].map(index => {
             return {
                 'from': token.address,
-                'to': ethers.Wallet.fromMnemonic(
-                    ethers.utils.entropyToMnemonic(
-                        Buffer.from([...Array(16).keys()].map(_ => index).join(''), 'utf-8')
-                    )
-                ).address,
+                'to': ethers.Wallet.createRandom().address.address,
                 'amount': random.intBetween(0, 100),
                 'feeFrom': 'aNamadaAddress',
                 'fee': random.intBetween(0, 100)
@@ -238,11 +233,7 @@ describe("Bridge", function () {
         const transfersThree = [...Array(30).keys()].map(index => {
             return {
                 'from': token.address,
-                'to': ethers.Wallet.fromMnemonic(
-                    ethers.utils.entropyToMnemonic(
-                        Buffer.from([...Array(16).keys()].map(_ => index).join(''), 'utf-8')
-                    )
-                ).address,
+                'to': ethers.Wallet.createRandom().address.address,
                 'amount': random.intBetween(0, 100),
                 'feeFrom': 'aNamadaAddress',
                 'fee': random.intBetween(0, 100)
@@ -269,6 +260,7 @@ describe("Bridge", function () {
 
         const signaturesThree = await generateSignatures(signers, rootThree);
 
+        // valid transfer
         await bridge.transferToERC(
             currentValidatorSetArgs,
             signaturesThree,
@@ -278,14 +270,6 @@ describe("Bridge", function () {
             proofFlagsThree,
             batchNonce + 1
         )
-
-        // for (const transfer of transfersThree) {
-        //     const initialAddressBalance = await token.balanceOf(transfer.to)
-        //     expect(initialAddressBalance).to.be.equal(ethers.BigNumber.from(0))
-        // }
-
-        // const postVaultBalanceThree = await token.balanceOf(vault.address);
-        // expect(postVaultBalanceThree).to.be.equal(ethers.BigNumber.from(maxTokenSupply - totalTransfered))
 
         // invalid validator set 
         const invalidValidatorSet = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)

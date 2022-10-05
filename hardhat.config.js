@@ -4,7 +4,6 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
-require('solidity-coverage')
 require('hardhat-contract-sizer');
 
 /**

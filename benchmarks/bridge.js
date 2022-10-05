@@ -1,5 +1,5 @@
 const { ethers, network } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures } = require("../test/utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, ourMultiProof } = require("../test/utils/utilities")
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 
@@ -40,30 +40,30 @@ const trasferToERC20 = async function (index) {
 
     const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
 
-    const transfers = [...Array(index * 3).keys()].map(_ => {
+    const transfers = [...Array(index * 2).keys()].map(index => {
         return {
             'from': token.address,
             'to': ethers.Wallet.createRandom().address,
-            'amount': 10,
-            'fee': 2
+            'amount': 5,
+            'feeFrom': 'aNamadaAddress',
+            'fee': 1
         }
     })
 
     const transferHashes = transfers.map(transfer => {
-        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.fee, 1])
+        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
     }).map(keccak256)
 
     const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
 
     // build merkle tree, generate proofs
     const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
-    const root = merkleTree.getRoot();
 
     const proofLeaves = transfers.slice(0, index).map(transfer => {
-        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.fee, 1])
+        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
     }).map(keccak256).sort(Buffer.compare)
-    const proof = merkleTree.getMultiProof(proofLeaves);
-    const proofFlags = merkleTree.getProofFlags(proofLeaves, proof);
+
+    const [root, proof, proofFlags] = ourMultiProof(merkleTree, proofLeaves)
 
     const validTransfers = proofLeaves.map(proof => {
         return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
@@ -80,7 +80,7 @@ const trasferToERC20 = async function (index) {
             proof,
             proofFlags,
             1
-        );
+        )
 
         const receipt = await tx.wait()
         const txGas = Number(receipt.gasUsed);
