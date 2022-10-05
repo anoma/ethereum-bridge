@@ -19,7 +19,7 @@ interface ICommon {
         uint256 amount;
         string to;
     }
-    
+
     struct ERC20Transfer {
         address from;
         address to;

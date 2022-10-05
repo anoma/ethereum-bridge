@@ -271,31 +271,4 @@ contract Bridge is IBridge, ReentrancyGuard {
         require(msg.sender == governanceAddress, "Invalid caller.");
         _;
     }
-
-    // function processMultiProof(
-    //     bytes32[] memory proof,
-    //     bool[] memory proofFlags,
-    //     bytes32[] memory leaves
-    // ) internal pure returns (bytes32 merkleRoot) {
-    //     uint256 totalHashes = proof.length + leaves.length;
-    //     bytes32[] memory hashes = new bytes32[](totalHashes);
-    //     uint256 leafPos = 0;
-    //     uint256 proofPos = 0;
-    //     hashes[0] = proofFlags[0] ? leaves[leafPos++] : proof[proofPos++];
-
-    //     for (uint256 i = 1; i < totalHashes; i++) {
-    //         bytes32 a = proofFlags[i] ? leaves[leafPos++] : proof[proofPos++];
-    //         hashes[i] = _hashPair(hashes[i - 1], a);
-    //     }
-
-    //     return hashes[totalHashes - 1];
-    // }
-
-    // function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
-    //     assembly {
-    //         mstore(0x00, a)
-    //         mstore(0x20, b)
-    //         value := keccak256(0x00, 0x40)
-    //     }
-    // }
 }
