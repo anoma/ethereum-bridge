@@ -415,8 +415,8 @@ describe("Bridge", function () {
         expect(nonWhitelistedTokenPostBalance).to.be.equal(nonWhitelistedTokenPreBalance)
     });
 
-    it.only("TrasferToNamada event testing", async function() {
-        const [newWallet, randomAddress] = await ethers.getSigners()
+    it("TrasferToNamada event testing", async function() {
+        const [newWallet] = await ethers.getSigners()
         const numberOfConfirmations = 100;
 
         const preBridgeBalance = await token.balanceOf(vault.address);
@@ -461,6 +461,84 @@ describe("Bridge", function () {
             expect(event.args[1][1].amount).to.be.equal(ethers.BigNumber.from(2950))
 
             expect(event.args[2]).to.be.equal(ethers.BigNumber.from(100))
-        })    
+        })
     })
+
+    it("TrasferToERC20 event testing", async function() {
+        const currentValidatorSetArgs = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
+
+        const transfers = [...Array(30).keys()].map(_ => {
+            return {
+                'from': token.address,
+                'to': ethers.Wallet.createRandom().address,
+                'amount': random.intBetween(0, 100),
+                'feeFrom': 'aNamadaAddress',
+                'fee': random.intBetween(0, 100)
+            }
+        })
+
+        for (const transfer of transfers) {
+            const initialAddressBalance = await token.balanceOf(transfer.to)
+            expect(initialAddressBalance).to.be.equal(ethers.BigNumber.from(0))
+        }
+
+        const transferHashes = transfers.map(transfer => {
+            return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
+        }).map(keccak256)
+
+        const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
+
+        // build merkle tree, generate proofs
+        const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
+
+        const proofLeaves = transfers.slice(0, 2).map(transfer => {
+            return ethers.utils.solidityPack(["uint8", "string", "address", "address","uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
+        }).map(keccak256).sort(Buffer.compare)
+
+        const [root, proof, proofFlags] = ourMultiProof(merkleTree, proofLeaves)
+
+        const validTransfers = proofLeaves.map(proof => {
+            return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
+        }).map(index => transfers[index])
+
+        const signatures = await generateSignatures(signers, root);
+
+        const tx = await bridge.transferToERC(
+            currentValidatorSetArgs,
+            signatures,
+            validTransfers,
+            root,
+            proof,
+            proofFlags,
+            1
+        )
+
+        const receipt = await tx.wait()
+
+        const events = receipt.events.filter(event => event.event != undefined)
+
+        events.forEach(event => {
+            expect(event.event).to.be.equal('TransferToERC')
+            expect(event.eventSignature).to.be.equal('TransferToERC(uint256,(address,address,uint256,string,uint256)[])')
+            expect(event.args.length).to.be.equal(validTransfers.length)
+
+            expect(event.args[0]).to.be.equal(ethers.BigNumber.from(1))
+            expect(event.args[1].length).to.be.equal(2)
+
+            // first transfer
+            expect(event.args[1][0].from).to.be.equal(validTransfers[0].from)
+            expect(event.args[1][0].to).to.be.equal(validTransfers[0].to)
+            expect(event.args[1][0].amount).to.be.equal(ethers.BigNumber.from(validTransfers[0].amount))
+            expect(event.args[1][0].fee).to.be.equal(ethers.BigNumber.from(validTransfers[0].fee))
+            expect(event.args[1][0].feeFrom).to.be.equal(validTransfers[0].feeFrom)
+
+            // second transfer
+            expect(event.args[1][1].from).to.be.equal(validTransfers[1].from)
+            expect(event.args[1][1].to).to.be.equal(validTransfers[1].to)
+            expect(event.args[1][1].amount).to.be.equal(ethers.BigNumber.from(validTransfers[1].amount))
+            expect(event.args[1][1].fee).to.be.equal(ethers.BigNumber.from(validTransfers[1].fee))
+            expect(event.args[1][1].feeFrom).to.be.equal(validTransfers[1].feeFrom)
+        })
+    })
+
 })
