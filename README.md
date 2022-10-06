@@ -7,7 +7,7 @@ Namada Ethereum bridge is a set of smart contract to enable the exchange of toke
 - [x] Handle multiple ERC20 tokens
 - [x] Batched transfers
 - [x] Issue native namada token on Ethereum
-- [ ] Tested with +95% coverage
+- [x] Tested with +95% coverage
 - [ ] Audit
 
 # Smart contracts
@@ -24,4 +24,4 @@ The smart contracts used to operate the namada bridge on ethereum are:
 
 `Governance` functionality is twofold: keep the namada validator set up-to-date and upgrade existing contract to new versions.
 
-`Vault` is used to escrow the tokens
+`Vault` is used to escrow tokens
