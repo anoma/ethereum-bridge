@@ -14,6 +14,7 @@ async function main() {
     }])
 
     if (!correctNetwork) {
+        console.log("Network is not correct");
         return;
     }
 
@@ -38,12 +39,17 @@ async function main() {
         type: 'string'
     }])
 
-    if (!isValidJsonFile(brideValidatorSetPath) || !isValidJsonFile(nextBridgeValidatorSetPath) || !isValidJsonFile(governanceValidatorSetPath)) {
-        return;
-    }
-
-    if (!isValidValidatorSet(brideValidatorSetPath) || !isValidValidatorSet(nextBridgeValidatorSetPath) | !isValidValidatorSet(governanceValidatorSetPath)) {
-        return
+    for (const path of [brideValidatorSetPath, nextBridgeValidatorSetPath, governanceValidatorSetPath]) {
+        if (!isValidJsonFile(path)) {
+            console.log(`Invalid JSON file: ${path}`)
+            process.exitCode = 1
+            return
+        }
+        if (!isValidValidatorSet(path)) {
+            console.log(`Not a valid validator set: ${path}`)
+            process.exitCode = 1
+            return
+        }
     }
 
     const { wnamTokenSupply } = await prompt.get([{
@@ -211,7 +217,19 @@ function isValidValidatorSet(path) {
     const votingPowerSum = Object.values(jsonContent).reduce((acc, val) => acc + val, 0)
     const maxVotingPower = Math.pow(2, 32)
 
-    return totalValidators > 0 && totalValidators < 126 && votingPowerSum <= maxVotingPower && votingPowerSum >= maxVotingPower - 10
+    if (totalValidators < 0 || totalValidators > 126) {
+        console.log(`totalValidators must be between 0 and 126, was {totalValidators}`)
+        return false
+    }
+    if (votingPowerSum > maxVotingPower) {
+        console.log(`votingPowerSum must be at most ${maxVotingPower}, was ${votingPowerSum}`)
+        return false
+    }
+    if (votingPowerSum < maxVotingPower - 10) {
+        console.log(`votingPowerSum must be at least ${maxVotingPower - 10}, was ${votingPowerSum}`)
+        return false
+    }
+    return true
 }
 
 function isValidJsonFile(path) {
