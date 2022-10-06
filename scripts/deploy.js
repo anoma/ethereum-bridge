@@ -46,10 +46,10 @@ async function main() {
         return
     }
 
-    const { tokenSupply } = await prompt.get([{
-        name: 'tokenSupply',
+    const { wnamTokenSupply } = await prompt.get([{
+        name: 'wnamTokenSupply',
         required: true,
-        description: "Max token ERC20 token supply",
+        description: "Total wrapped NAM ERC20 token supply",
         type: 'number'
     }])
 
@@ -71,7 +71,7 @@ async function main() {
     const { tokenWhitelistPrompt } = await prompt.get([{
         name: 'tokenWhitelistPrompt',
         required: false,
-        description: "Whitelisted token address, comma separated",
+        description: "Whitelisted token addresses, comma separated (not including wNAM)",
         type: 'string',
         default: ''
     }])
@@ -79,7 +79,7 @@ async function main() {
     const { tokenCapsPrompt } = await prompt.get([{
         name: 'tokenCapsPrompt',
         required: false,
-        description: "Whitelisted token caps, comma separated",
+        description: "Whitelisted token caps, comma separated (not including wNAM)",
         type: 'string',
         default: ''
     }])
@@ -126,11 +126,11 @@ async function main() {
     const vault = await Vault.deploy(proxy.address);
     await vault.deployed();
 
-    const token = await Token.deploy("Wrapper Namada", "WNAM", [tokenSupply], [vault.address]);
-    await token.deployed();
+    const wnamToken = await Token.deploy("Wrapper Namada", "WNAM", [wnamTokenSupply], [vault.address]);
+    await wnamToken.deployed();
 
-    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [token.address] : tokenWhitelistPrompt.split(',').map(token => token.trim()).concat(token.address)
-    const tokenCaps = tokenCapsPrompt.length == 0 ? [] : tokenCapsPrompt.split(',').map(cap => parseInt(cap))
+    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [wnamToken.address] : tokenWhitelistPrompt.split(',').map(token => token.trim()).concat(wnamToken.address)
+    const tokenCaps = tokenCapsPrompt.length == 0 ? [wnamTokenSupply] : tokenCapsPrompt.split(',').map(cap => parseInt(cap)).concat(wnamTokenSupply)
 
     const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, nextBridgeValidators, nextBridgeVotingPowers, tokenWhitelist, tokenCaps, bridgeVotingPowerThreshold, proxy.address);
     await bridge.deployed();
@@ -148,15 +148,15 @@ async function main() {
     console.log(`Proxy address: ${proxy.address}`)
     console.log(`Governance address: ${governance.address}`)
     console.log(`Bridge address: ${bridge.address}`)
-    console.log(`Token address: ${token.address}`)
+    console.log(`Token address: ${wnamToken.address}`)
     console.log("")
 
-    await writeState(proxy.address, governance.address, bridge.address, token.address, hre.network.name, hre.network.config.chainId)
+    await writeState(proxy.address, governance.address, bridge.address, wnamToken.address, hre.network.name, hre.network.config.chainId)
 
     await etherscan(proxy.address, [], hre.network.name);
     await etherscan(governance.address, [1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, proxy.address], hre.network.name);
     await etherscan(bridge.address, [1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, proxy.address], hre.network.name);
-    await etherscan(token.address, ["Wrapper Namada", "WNAM", tokenSupply, bridge.address], hre.network.name);
+    await etherscan(wnamToken.address, ["Wrapper Namada", "WNAM", wnamTokenSupply, bridge.address], hre.network.name);
 
     console.log("Running checks...")
     const governanceAddressProxy = await proxy.getContract("governance")
