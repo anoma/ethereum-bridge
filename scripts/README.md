@@ -14,4 +14,21 @@ Useful scripts to manage smart contracts.
 ```
 npx hardhat run scripts/$SCRIPT_NAME.js --network $NETWORK_NAME
 ```
+
 where `$SCRIPT_NAME` is a valid script in the `scripts` folder and `$NETWORK_NAME` must be configured in `hardhat.config.js`.
+
+# Deploying to a local hardhat node
+
+Ensure a node is running.
+
+```shell
+npx hardhat node
+```
+
+Then do the following:
+
+```shell
+npx run scripts/fake-data-generator.js
+npx run scripts/before_deploy.js --network localhost
+
+```
