@@ -30,7 +30,7 @@ Then do the following:
 ```shell
 $ npx run scripts/fake-data-generator.js
 
-$ npx run scripts/before_deploy.js --network localhost
+$ npx hardhat run scripts/before_deploy.js --network localhost
 # the test ERC20 should have been deployed to 0x5FbDB2315678afecb367f032d93F642f64180aa3
 
 $ npx hardhat run scripts/deploy.js --network localhost
@@ -53,4 +53,5 @@ Token address: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
 Running checks...
 Looking good!
 
+$ npx hardhat run scripts/after_deploy.js --network localhost
 ```

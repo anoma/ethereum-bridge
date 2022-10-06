@@ -13,49 +13,45 @@ async function main() {
   const [me] = await ethers.getSigners();
   console.log(`I am ${me.address}`);
 
-  // testErc20Address should already have been deployed    ';
+  const testErc20 = await ethers.getContractAt('TestERC20', testErc20Address);
+  console.log(`TestERC20 at: ${testErc20Address}`);
+
   const stateJson = readStateJson();
   const bridgeAddress = stateJson.bridge;
   console.log(`Bridge at: ${bridgeAddress}`);
 
-  const testErc20 = await ethers.getContractAt('TestERC20', testErc20Address);
-  console.log(`TestERC20 at: ${testErc20Address}`);
-
   const transferAmount = 100;
   await testErc20.approve(bridgeAddress, transferAmount);
-  console.log(`Approved ${transferAmount} tokens`);
+  console.log(`Approved the bridge to spend ${transferAmount} of my TestERC20`);
   const bridgeAllowance = await testErc20.allowance(me.address, bridgeAddress);
-  console.log(`Bridge allowance: ${bridgeAllowance}`);
+  console.log(`To confirm, bridge allowance is: ${bridgeAllowance}`);
 
   const bridge = await ethers.getContractAt('Bridge', bridgeAddress);
   console.log(`Transferring ${testErc20Address} to ${receiverNamadaAddress}`);
   const result = await bridge.transferToNamada(
-    [testErc20Address],
-    [transferAmount],
-    [receiverNamadaAddress],
+    [
+      {
+        from: testErc20Address,
+        to: receiverNamadaAddress,
+        amount: transferAmount,
+      },
+    ],
     0,
   );
-  console.log(`Result: ${JSON.stringify(result)}`);
+  console.log(`Result: ${JSON.stringify(result, null, 2)}`);
 
   const bridgeRemainingAllowance = await testErc20.allowance(
     me.address,
     bridgeAddress,
   );
-  console.log(`Bridge remaining allowance: ${bridgeRemainingAllowance}`);
+  console.log(
+    `Bridge remaining allowance (should be zero): ${bridgeRemainingAllowance}`,
+  );
 
   for (let i = 0; i < 50; i++) {
     await network.provider.send('evm_mine');
-    console.log(`Mined a block`);
+    console.log(`Mined a block (${i + 1})`);
   }
-  // TODO:
-
-  // this gets the bridge's balance of wrapped NAM
-  // {
-  //     let wnamAddress = stateJson['token'];
-  //     const token = await ethers.getContractAt("Token", wnamAddress);
-  //     let balance = await token.balanceOf(bridgeAddress);
-  //     console.log(balance);
-  // }
 }
 
 function readStateJson() {
