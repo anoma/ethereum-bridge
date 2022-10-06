@@ -27,8 +27,9 @@ async function main() {
   console.log(`To confirm, bridge allowance is: ${bridgeAllowance}`);
 
   const bridge = await ethers.getContractAt('Bridge', bridgeAddress);
+
   console.log(`Transferring ${testErc20Address} to ${receiverNamadaAddress}`);
-  const result = await bridge.transferToNamada(
+  const tx = await bridge.transferToNamada(
     [
       {
         from: testErc20Address,
@@ -38,7 +39,14 @@ async function main() {
     ],
     0,
   );
-  console.log(`Result: ${JSON.stringify(result, null, 2)}`);
+  console.log(`Result: ${JSON.stringify(tx, null, 2)}`);
+
+  const receipt = await tx.wait();
+
+  const events = receipt.events.filter((event) => event.event !== undefined);
+  events.forEach((event) => {
+    console.log(`Event: ${JSON.stringify(event, null, 2)}`);
+  });
 
   const bridgeRemainingAllowance = await testErc20.allowance(
     me.address,
