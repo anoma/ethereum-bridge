@@ -3,30 +3,30 @@
 const { ethers } = require('hardhat');
 
 const TEST_ERC20_CONTRACT_NAME = 'TestERC20';
+const TEST_ERC20_TOTAL_SUPPLY = 10_000;
 
 async function deployTestErc20() {
   const TestERC20 = await ethers.getContractFactory(TEST_ERC20_CONTRACT_NAME);
   const token = await TestERC20.deploy();
   await token.deployed();
-  console.log(`Token deployed: ${token.address}`);
+  console.log(`ERC20 token deployed: ${token.address}`);
   return token;
 }
 
 async function getScriptRunnerAddress() {
   const [deployer] = await ethers.getSigners();
-  console.log(`I am ${deployer.address}`);
+  console.log(`My Ethereum address is ${deployer.address}`);
   return deployer;
 }
 
 async function main() {
-  const token = await deployTestErc20();
-
   const deployer = await getScriptRunnerAddress();
 
-  const mintAmount = 10_000;
-  const result = await token.mint(deployer.address, mintAmount);
-  console.log(`Mint result: ${JSON.stringify(result)}`);
-  console.log(`Minted myself ${mintAmount} tokens`);
+  const token = await deployTestErc20();
+
+  const result = await token.mint(deployer.address, TEST_ERC20_TOTAL_SUPPLY);
+  console.log(`Mint result: ${JSON.stringify(result, null, 2)}`);
+  console.log(`Minted myself ${TEST_ERC20_TOTAL_SUPPLY} tokens`);
 
   // await token.approve(deployer.address, mintAmount);
 
@@ -34,9 +34,7 @@ async function main() {
   console.log(`My balance: ${balance}`);
 }
 
-main()
-  .then(() => console.log('Done'))
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
