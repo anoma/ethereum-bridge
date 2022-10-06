@@ -148,7 +148,7 @@ async function main() {
     console.log(`Proxy address: ${proxy.address}`)
     console.log(`Governance address: ${governance.address}`)
     console.log(`Bridge address: ${bridge.address}`)
-    console.log(`Token address: ${wnamToken.address}`)
+    console.log(`wNAM token address: ${wnamToken.address}`)
     console.log("")
 
     await writeState(proxy.address, governance.address, bridge.address, wnamToken.address, hre.network.name, hre.network.config.chainId)
@@ -167,7 +167,7 @@ async function main() {
     console.log("Looking good!")
 }
 
-const writeState = async (proxyAddress, governanceAddress, bridgeAddress, tokenAddress, networkName, networkChainId) => {
+const writeState = async (proxyAddress, governanceAddress, bridgeAddress, wnamAddress, networkName, networkChainId) => {
     const filePath = `scripts/state-${networkName}-${networkChainId}.json`
     const stateExist = fs.existsSync(filePath)
 
@@ -175,7 +175,7 @@ const writeState = async (proxyAddress, governanceAddress, bridgeAddress, tokenA
         'proxy': proxyAddress,
         'governance': governanceAddress,
         'bridge': bridgeAddress,
-        'token': tokenAddress,
+        'wnam': wnamAddress,
         'network': {
             'name': networkName,
             'chainId': networkChainId
