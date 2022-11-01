@@ -18,8 +18,8 @@ async function main() {
         return;
     }
 
-    const { brideValidatorSetPath } = await prompt.get([{
-        name: 'brideValidatorSetPath',
+    const { bridgeValidatorSetPath } = await prompt.get([{
+        name: 'bridgeValidatorSetPath',
         required: true,
         description: "Full path to bridge validator set json file",
         type: 'string'
@@ -39,7 +39,7 @@ async function main() {
         type: 'string'
     }])
 
-    for (const path of [brideValidatorSetPath, nextBridgeValidatorSetPath, governanceValidatorSetPath]) {
+    for (const path of [bridgeValidatorSetPath, nextBridgeValidatorSetPath, governanceValidatorSetPath]) {
         if (!isValidJsonFile(path)) {
             console.log(`Invalid JSON file: ${path}`)
             process.exitCode = 1
@@ -91,7 +91,7 @@ async function main() {
     }])
 
     // bridge constructors parameters
-    const bridgeValidatorSetContent = fs.readFileSync(brideValidatorSetPath)
+    const bridgeValidatorSetContent = fs.readFileSync(bridgeValidatorSetPath)
     const bridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
 
     const bridgeValidators = Object.keys(bridgeValidatorSet)
