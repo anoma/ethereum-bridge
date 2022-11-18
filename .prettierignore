@@ -3,3 +3,8 @@ artifacts
 cache
 coverage*
 gasReporterOutput.json
+*.js
+*.json
+*.md
+*.yml
+.prettierrc
