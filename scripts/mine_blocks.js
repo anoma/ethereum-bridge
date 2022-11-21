@@ -1,8 +1,12 @@
 const { network } = require('hardhat');
 
 async function main() {
-  await network.provider.send('evm_mine');
-  console.log(`Mined a block`);
+  // iterate 50 times
+  for (let i = 0; i < 50; i++) {
+    // mine a block
+    await network.provider.send('evm_mine');
+  }
+  console.log(`Mined blocks`);
 }
 
 main()
