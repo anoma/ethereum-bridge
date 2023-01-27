@@ -188,7 +188,12 @@ contract Bridge is IBridge, ReentrancyGuard {
         bytes32 _messageHash,
         Signature calldata _signature
     ) internal pure returns (bool) {
-        bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
+        bytes memory bytesToHash = new bytes(60);
+        assembly {
+            mstore(bytesToHash, "\x19Ethereum Signed Message:\n32")
+            mstore(add(bytesToHash, 28), _messageHash)
+        }
+        bytes32 messageDigest = keccak256(bytesToHash);
         (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
             messageDigest,
             _signature.v,
@@ -201,7 +206,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     function _computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     version,
                     "bridge",
                     validatorSetArgs.validators,
@@ -214,7 +219,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     function _computeTransferHash(ERC20Transfer calldata transfer, uint256 nonce) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     version,
                     "transfer",
                     transfer.from,
@@ -233,7 +238,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] memory powers,
         uint256 nonce
     ) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(version, "bridge", validators, powers, nonce));
+        return keccak256(abi.encode(version, "bridge", validators, powers, nonce));
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
