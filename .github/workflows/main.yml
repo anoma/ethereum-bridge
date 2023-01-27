@@ -69,4 +69,9 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Clean project
         run: make clean
-      - uses: crytic/slither-action@v0.1.1
+      - name: Read node version
+        id: nvmrc
+        run: echo "::set-output name=nvmrc::$(cat .nvmrc)"
+      - uses: crytic/slither-action@v0.2.0
+        with:
+          node-version: ${{ steps.nvmrc.outputs.nvmrc }}
