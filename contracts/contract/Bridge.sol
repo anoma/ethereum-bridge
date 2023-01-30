@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "../interface/IBridge.sol";
 import "../interface/IProxy.sol";
 import "../interface/IVault.sol";
+import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -187,8 +188,9 @@ contract Bridge is IBridge, ReentrancyGuard {
         address _signer,
         bytes32 _messageHash,
         Signature calldata _signature
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
+        console.logBytes32(messageDigest);
         (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
             messageDigest,
             _signature.v,

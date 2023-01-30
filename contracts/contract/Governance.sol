@@ -5,6 +5,7 @@ import "../interface/IProxy.sol";
 import "../interface/IBridge.sol";
 import "../interface/IGovernance.sol";
 import "../interface/ICommon.sol";
+import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -109,6 +110,7 @@ contract Governance is IGovernance, ReentrancyGuard {
                 nonce
             )
         );
+        console.logBytes32(messageHash);
 
         validatorSetNonce = nonce;
 
