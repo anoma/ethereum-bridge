@@ -5,6 +5,13 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require('hardhat-contract-sizer');
+const deploy = require('./tasks/deploy.js');
+
+task("deploy", "Deploy the smart contracts")
+  .addOptionalParam("configuration", "The path to a JSON file containing configuration values for deployment", '')
+  .setAction(async ({configuration}, hre) => {
+    await deploy.main(hre, configuration)
+  })
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
