@@ -79,7 +79,8 @@ contract Bridge is IBridge, ReentrancyGuard {
         bytes32 _poolRoot,
         bytes32[] calldata _proof,
         bool[] calldata _proofFlags,
-        uint256 batchNonce
+        uint256 batchNonce,
+        string calldata relayerAddress
     ) external nonReentrant {
         require(transferToERC20Nonce + 1 == batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
@@ -89,14 +90,15 @@ contract Bridge is IBridge, ReentrancyGuard {
             "Invalid currentValidatorSetHash."
         );
 
+        bytes32 trasferPoolRoot = _computeTransferPoolRootHash(_poolRoot, batchNonce);
         require(
-            checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _poolRoot),
+            checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, trasferPoolRoot),
             "Invalid validator set signature."
         );
 
         bytes32[] memory leaves = new bytes32[](_transfers.length);
         for (uint256 i = 0; i < _transfers.length; i++) {
-            bytes32 transferHash = _computeTransferHash(_transfers[i], batchNonce);
+            bytes32 transferHash = _computeTransferHash(_transfers[i]);
             leaves[i] = transferHash;
         }
 
@@ -116,7 +118,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             tokenWhiteList[validTransfers[i].from] += validTransfers[i].amount;
         }
 
-        emit TransferToERC(transferToERC20Nonce, validTransfers);
+        emit TransferToERC(transferToERC20Nonce, validTransfers, relayerAddress);
     }
 
     // this function assumes that the the tokens are transfered from a ERC20 compliant contract
@@ -211,7 +213,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             );
     }
 
-    function _computeTransferHash(ERC20Transfer calldata transfer, uint256 nonce) internal view returns (bytes32) {
+    function _computeTransferHash(ERC20Transfer calldata transfer) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
@@ -222,6 +224,16 @@ contract Bridge is IBridge, ReentrancyGuard {
                     transfer.amount,
                     transfer.feeFrom,
                     transfer.fee,
+                    transfer.sender
+                )
+            );
+    }
+
+    function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    poolRoot,
                     nonce
                 )
             );

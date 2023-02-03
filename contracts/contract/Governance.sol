@@ -95,7 +95,7 @@ contract Governance is IGovernance, ReentrancyGuard {
                 _currentValidatorSetArgs.validators.length == _signatures.length,
             "Malformed input."
         );
-        require(nonce > validatorSetNonce && validatorSetNonce + MAX_NONCE_INCREMENT > nonce, "Invalid nonce.");
+        require(validatorSetNonce == nonce + 1, "Invalid nonce.");
 
         address bridgeAddress = proxy.getContract("bridge");
         IBridge bridge = IBridge(bridgeAddress);
@@ -158,7 +158,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         uint256 powerAccumulator = 0;
         for (uint256 i = 0; i < _validators.powers.length; i++) {
             if (!isValidSignature(_validators.validators[i], _messageHash, _signatures[i])) {
-                return false;
+                continue;
             }
 
             powerAccumulator = powerAccumulator + _validators.powers[i];
