@@ -188,12 +188,10 @@ contract Bridge is IBridge, ReentrancyGuard {
         bytes32 _messageHash,
         Signature calldata _signature
     ) internal pure returns (bool) {
-        bytes memory bytesToHash = new bytes(60);
-        assembly {
-            mstore(bytesToHash, "\x19Ethereum Signed Message:\n32")
-            mstore(add(bytesToHash, 28), _messageHash)
-        }
-        bytes32 messageDigest = keccak256(bytesToHash);
+        bytes32 messageDigest = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            _messageHash
+        ));
         (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
             messageDigest,
             _signature.v,
