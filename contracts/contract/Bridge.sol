@@ -18,7 +18,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     bytes32 public currentValidatorSetHash;
     bytes32 public nextValidatorSetHash;
 
-    uint256 private transferToERC20Nonce = 0;
+    uint256 private transferToErc20Nonce = 0;
     uint256 private transferToNamadaNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
@@ -72,17 +72,32 @@ contract Bridge is IBridge, ReentrancyGuard {
         return checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _message);
     }
 
-    function transferToERC(
+    function transferToErc(
+        RelayProof calldata relayProof
+    ) external nonReentrant {
+        _transferToErc(
+            relayProof.validatorSetArgs,
+            relayProof.signatures,
+            relayProof.transfers,
+            relayProof.poolRoot,
+            relayProof.proof,
+            relayProof.proofFlags,
+            relayProof.batchNonce,
+            relayProof.relayerAddress
+        );
+    }
+
+    function _transferToErc(
         ValidatorSetArgs calldata _validatorSetArgs,
         Signature[] calldata _signatures,
-        ERC20Transfer[] calldata _transfers,
+        Erc20Transfer[] calldata _transfers,
         bytes32 _poolRoot,
         bytes32[] calldata _proof,
         bool[] calldata _proofFlags,
         uint256 batchNonce,
         string calldata relayerAddress
-    ) external nonReentrant {
-        require(transferToERC20Nonce + 1 == batchNonce, "Invalid batchNonce.");
+    ) internal {
+        require(transferToErc20Nonce + 1 == batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
 
         require(
@@ -106,22 +121,22 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         require(_poolRoot == root, "Invalid transfers proof.");
 
-        transferToERC20Nonce = transferToERC20Nonce + 1;
+        transferToErc20Nonce = transferToErc20Nonce + 1;
 
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
 
-        ERC20Transfer[] memory validTransfers = new ERC20Transfer[](_transfers.length);
+        Erc20Transfer[] memory validTransfers = new Erc20Transfer[](_transfers.length);
 
-        validTransfers = vault.batchTransferToERC20(_transfers);
+        validTransfers = vault.batchTransferToErc20(_transfers);
         for (uint256 i = 0; i < validTransfers.length; i++) {
             tokenWhiteList[validTransfers[i].from] += validTransfers[i].amount;
         }
 
-        emit TransferToERC(transferToERC20Nonce, validTransfers, relayerAddress);
+        emit TransferToErc(transferToErc20Nonce, validTransfers, relayerAddress);
     }
 
-    // this function assumes that the the tokens are transfered from a ERC20 compliant contract
+    // this function assumes that the the tokens are transfered from a Erc20 compliant contract
     function transferToNamada(NamadaTransfer[] calldata _tranfers, uint256 confirmations) external nonReentrant {
         address vaultAddress = proxy.getContract("vault");
 
@@ -213,7 +228,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             );
     }
 
-    function _computeTransferHash(ERC20Transfer calldata transfer) internal view returns (bytes32) {
+    function _computeTransferHash(Erc20Transfer calldata transfer) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(

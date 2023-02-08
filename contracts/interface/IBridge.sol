@@ -8,7 +8,18 @@ interface IBridge is ICommon {
 
     event InvalidTransferToNamada(address from, string to, uint256 amount);
 
-    event TransferToERC(uint256 indexed nonce, ERC20Transfer[] transfers, string relayerAddress);
+    event TransferToErc(uint256 indexed nonce, Erc20Transfer[] transfers, string relayerAddress);
+
+    struct RelayProof {
+        ValidatorSetArgs validatorSetArgs;
+        Signature[] signatures;
+        Erc20Transfer[] transfers;
+        bytes32 poolRoot;
+        bytes32[] proof;
+        bool[] proofFlags;
+        uint256 batchNonce;
+        string relayerAddress;
+    }
 
     function authorize(
         ValidatorSetArgs calldata validatorSetArgs,
@@ -18,15 +29,8 @@ interface IBridge is ICommon {
 
     function transferToNamada(NamadaTransfer[] calldata trasfers, uint256 confirmations) external;
 
-    function transferToERC(
-        ValidatorSetArgs calldata _validatorSetArgs,
-        Signature[] calldata _signatures,
-        ERC20Transfer[] calldata _transfers,
-        bytes32 _poolRoot,
-        bytes32[] calldata _proof,
-        bool[] calldata _proofFlags,
-        uint256 batchNonce,
-        string calldata relayerAddress
+    function transferToErc(
+        RelayProof calldata relayProof
     ) external;
 
     function updateTokenWhitelist(address[] calldata tokens, uint256[] calldata tokensCap) external;
