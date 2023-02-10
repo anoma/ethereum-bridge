@@ -97,7 +97,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 batchNonce,
         string calldata relayerAddress
     ) internal {
-        require(transferToErc20Nonce + 1 == batchNonce, "Invalid batchNonce.");
+        require(transferToErc20Nonce == batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
 
         require(
