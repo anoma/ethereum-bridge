@@ -14,7 +14,7 @@ contract Governance is IGovernance, ReentrancyGuard {
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
-    uint256 public validatorSetNonce = 1;
+    uint256 public validatorSetNonce = 0;
 
     uint256 public whitelistNonce = 0;
 
@@ -101,7 +101,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         IBridge bridge = IBridge(bridgeAddress);
 
         bytes32 messageHash = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 version,
                 "updateValidatorsSet",
                 _bridgeValidatorSetHash,
@@ -174,7 +174,10 @@ contract Governance is IGovernance, ReentrancyGuard {
         bytes32 _messageHash,
         Signature calldata _signature
     ) internal pure returns (bool) {
-        bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
+        bytes32 messageDigest = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            _messageHash
+        ));
         (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
             messageDigest,
             _signature.v,
@@ -187,7 +190,7 @@ contract Governance is IGovernance, ReentrancyGuard {
     function _computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     version,
                     "governance",
                     validatorSetArgs.validators,
@@ -202,7 +205,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         uint256[] memory powers,
         uint256 nonce
     ) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(version, "governance", validators, powers, nonce));
+        return keccak256(abi.encode(version, "governance", validators, powers, nonce));
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
