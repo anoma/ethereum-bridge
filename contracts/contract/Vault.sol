@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
+import "hardhat/console.sol";
 import "../interface/IProxy.sol";
 import "../interface/IVault.sol";
 
@@ -13,7 +14,7 @@ contract Vault is IVault {
         proxy = IProxy(_proxy);
     }
 
-    function batchTransferToErc20(Erc20Transfer[] memory _transfers)
+    function batchTransferToErc20(Erc20Transfer[] memory _transfers, bool[] calldata _valid)
         external
         onlyLatestBridgeContract
         returns (Erc20Transfer[] memory)
@@ -21,9 +22,13 @@ contract Vault is IVault {
         Erc20Transfer[] memory validTransfers = new Erc20Transfer[](_transfers.length);
 
         for (uint256 i = 0; i < _transfers.length; ++i) {
-            try IERC20(_transfers[i].from).transfer(_transfers[i].to, _transfers[i].amount) {
-                validTransfers[i] = _transfers[i];
-            } catch {
+            if (_valid[i]) {
+                try IERC20(_transfers[i].from).transfer(_transfers[i].to, _transfers[i].amount) {
+                    validTransfers[i] = _transfers[i];
+                } catch {
+                    emit InvalidTransfer(_transfers[i]);
+                }
+            } else {
                 emit InvalidTransfer(_transfers[i]);
             }
         }

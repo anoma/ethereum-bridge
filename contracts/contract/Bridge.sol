@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
+import "hardhat/console.sol";
+
 import "../interface/IBridge.sol";
 import "../interface/IProxy.sol";
 import "../interface/IVault.sol";
@@ -128,7 +130,15 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         Erc20Transfer[] memory validTransfers = new Erc20Transfer[](_transfers.length);
 
-        validTransfers = vault.batchTransferToErc20(_transfers);
+        bool[] memory _valid = new bool[](_transfers.length);
+
+        for (uint256 i = 0; i < _transfers.length; i++) {
+            if (tokenWhiteList[_transfers[i].from] != 0) {
+                _valid[i] = true;
+            }
+        }
+
+        validTransfers = vault.batchTransferToErc20(_transfers, _valid);
         for (uint256 i = 0; i < validTransfers.length; i++) {
             tokenWhiteList[validTransfers[i].from] += validTransfers[i].amount;
         }
@@ -204,11 +214,18 @@ contract Bridge is IBridge, ReentrancyGuard {
         address _signer,
         bytes32 _messageHash,
         Signature calldata _signature
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         bytes32 messageDigest = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             _messageHash
         ));
+        console.log("Signed message digest: ");
+        console.logBytes(abi.encodePacked(messageDigest));
+        console.logBytes(abi.encodePacked(_messageHash));
+        console.log("Signature v, r, s values: ");
+        console.logBytes(abi.encodePacked(_signature.v));
+        console.logBytes(abi.encodePacked(_signature.r));
+        console.logBytes(abi.encodePacked(_signature.s));
         (address signer, ECDSA.RecoverError error) = ECDSA.tryRecover(
             messageDigest,
             _signature.v,
@@ -248,13 +265,12 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    poolRoot,
-                    nonce
-                )
-            );
+         return keccak256(
+                    abi.encodePacked(
+                        poolRoot,
+                        nonce
+                    )
+                );
     }
 
     // duplicate since calldata can't be used in constructor

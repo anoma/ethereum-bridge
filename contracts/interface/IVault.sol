@@ -6,5 +6,5 @@ import "./ICommon.sol";
 interface IVault is ICommon {
     event InvalidTransfer(Erc20Transfer transfer);
 
-    function batchTransferToErc20(Erc20Transfer[] calldata tranfers) external returns (Erc20Transfer[] memory);
+    function batchTransferToErc20(Erc20Transfer[] calldata tranfers, bool[] memory _valid) external returns (Erc20Transfer[] memory);
 }
