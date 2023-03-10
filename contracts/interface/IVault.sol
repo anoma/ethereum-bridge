@@ -6,5 +6,7 @@ import "./ICommon.sol";
 interface IVault is ICommon {
     event InvalidTransfer(ERC20Transfer transfer);
 
-    function batchTransferToERC20(ERC20Transfer[] calldata tranfers, bool[] calldata validTransfers) external returns (bool[] memory);
+    function batchTransferToERC20(ERC20Transfer[] calldata tranfers, bool[] calldata validTransfers)
+        external
+        returns (bool[] memory);
 }

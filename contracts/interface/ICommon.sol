@@ -28,4 +28,15 @@ interface ICommon {
         uint256 fee;
         string sender;
     }
+
+    struct RelayProof {
+        ValidatorSetArgs validatorSetArgs;
+        Signature[] signatures;
+        ERC20Transfer[] transfers;
+        bytes32 poolRoot;
+        bytes32[] proof;
+        bool[] proofFlags;
+        uint256 batchNonce;
+        string relayerAddress;
+    }
 }

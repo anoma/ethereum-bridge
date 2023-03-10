@@ -72,55 +72,50 @@ contract Bridge is IBridge, ReentrancyGuard {
         return checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _message);
     }
 
-    function transferToERC(
-        ValidatorSetArgs calldata _validatorSetArgs,
-        Signature[] calldata _signatures,
-        ERC20Transfer[] calldata _transfers,
-        bytes32 _poolRoot,
-        bytes32[] calldata _proof,
-        bool[] calldata _proofFlags,
-        uint256 batchNonce,
-        string calldata relayerAddress
-    ) external nonReentrant {
-        require(transferToERC20Nonce + 1 == batchNonce, "Invalid batchNonce.");
-        require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Mismatch array length.");
+    function transferToERC(RelayProof calldata relayProof) external nonReentrant {
+        require(transferToERC20Nonce + 1 == relayProof.batchNonce, "Invalid batchNonce.");
+        require(_isValidSignatureSet(relayProof.validatorSetArgs, relayProof.signatures), "Mismatch array length.");
 
         require(
-            _computeValidatorSetHash(_validatorSetArgs) == currentValidatorSetHash,
+            _computeValidatorSetHash(relayProof.validatorSetArgs) == currentValidatorSetHash,
             "Invalid currentValidatorSetHash."
         );
 
-        bytes32 trasferPoolRoot = _computeTransferPoolRootHash(_poolRoot, batchNonce);
+        bytes32 trasferPoolRoot = _computeTransferPoolRootHash(relayProof.poolRoot, relayProof.batchNonce);
         require(
-            checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, trasferPoolRoot),
+            checkValidatorSetVotingPowerAndSignature(
+                relayProof.validatorSetArgs,
+                relayProof.signatures,
+                trasferPoolRoot
+            ),
             "Invalid validator set signature."
         );
 
-        bytes32[] memory leaves = new bytes32[](_transfers.length);
-        bool[] memory validTransfers = new bool[](_transfers.length);
-        for (uint256 i = 0; i < _transfers.length; i++) {
-            bytes32 transferHash = _computeTransferHash(_transfers[i]);
+        bytes32[] memory leaves = new bytes32[](relayProof.transfers.length);
+        bool[] memory validTransfers = new bool[](relayProof.transfers.length);
+        for (uint256 i = 0; i < relayProof.transfers.length; i++) {
+            bytes32 transferHash = _computeTransferHash(relayProof.transfers[i]);
             leaves[i] = transferHash;
-            validTransfers[i] = tokenWhiteList[_transfers[i].from] != 0;
+            validTransfers[i] = tokenWhiteList[relayProof.transfers[i].from] != 0;
         }
 
-        bytes32 root = MerkleProof.processMultiProof(_proof, _proofFlags, leaves);
+        bytes32 root = MerkleProof.processMultiProof(relayProof.proof, relayProof.proofFlags, leaves);
 
-        require(_poolRoot == root, "Invalid transfers proof.");
+        require(relayProof.poolRoot == root, "Invalid transfers proof.");
 
-        transferToERC20Nonce = batchNonce;
+        transferToERC20Nonce = relayProof.batchNonce;
 
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
 
-        bool[] memory completedTransfers = vault.batchTransferToERC20(_transfers, validTransfers);
-        for (uint256 i = 0; i < _transfers.length; i++) {
+        bool[] memory completedTransfers = vault.batchTransferToERC20(relayProof.transfers, validTransfers);
+        for (uint256 i = 0; i < relayProof.transfers.length; i++) {
             if (completedTransfers[i]) {
-                tokenWhiteList[_transfers[i].from] += _transfers[i].amount;
+                tokenWhiteList[relayProof.transfers[i].from] += relayProof.transfers[i].amount;
             }
         }
 
-        emit TransferToERC(transferToERC20Nonce, _transfers, validTransfers, relayerAddress);
+        emit TransferToERC(transferToERC20Nonce, relayProof.transfers, validTransfers, relayProof.relayerAddress);
     }
 
     // this function assumes that the the tokens are transfered from a ERC20 compliant contract

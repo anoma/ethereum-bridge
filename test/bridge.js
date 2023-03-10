@@ -158,17 +158,19 @@ describe("Bridge", function () {
 
         const signatures = await generateSignatures(signers, ethers.utils.solidityKeccak256(['bytes32', 'uint256'], [root, batchNonce]));
 
+        const relayerProofCorrect = {
+            validatorSetArgs: currentValidatorSetArgs,
+            signatures: signatures,
+            transfers: validTransfers,
+            poolRoot: root,
+            proof: proof,
+            proofFlags: proofFlags,
+            batchNonce: batchNonce,
+            relayerAddress: "a_random_relayer_address"
+        }
+
         // valid transfer
-        await bridge.transferToERC(
-            currentValidatorSetArgs,
-            signatures,
-            validTransfers,
-            root,
-            proof,
-            proofFlags,
-            batchNonce,
-            "a_random_relayer_address"
-        )
+        await bridge.transferToERC(relayerProofCorrect)
 
         // check wallets balances
         let totalTransfered = 0
@@ -193,44 +195,50 @@ describe("Bridge", function () {
             return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
         }).map(index => transfers[index])
 
-        const invalidNonceTransfer = bridge.transferToERC(
-            currentValidatorSetArgs,
-            signatures,
-            validTransfersTwo,
-            root,
-            proofTwo,
-            proofFlagsTwo,
-            batchNonce,
-            "a_random_relayer_address"
-        )
+        const relayerProofBadNonce = {
+            validatorSetArgs: currentValidatorSetArgs,
+            signatures: signatures,
+            transfers: validTransfersTwo,
+            poolRoot: root,
+            proof: proofTwo,
+            proofFlags: proofFlagsTwo,
+            batchNonce: batchNonce,
+            relayerAddress: "a_random_relayer_address"
+        }
+
+        const invalidNonceTransfer = bridge.transferToERC(relayerProofBadNonce)
         await expect(invalidNonceTransfer).to.be.revertedWith("Invalid batchNonce.")
 
         // invalid root signature
         const invalidSignature = await generateSignatures(signers, keccak256("randomInvalidRoot"));
 
-        const invalidRootSignature = bridge.transferToERC(
-            currentValidatorSetArgs,
-            invalidSignature,
-            validTransfers,
-            root,
-            proofTwo,
-            proofFlagsTwo,
-            batchNonce + 1,
-            "a_random_relayer_address"
-        )
+        const relayerProofBadSignature = {
+            validatorSetArgs: currentValidatorSetArgs,
+            signatures: invalidSignature,
+            transfers: validTransfers,
+            poolRoot: root,
+            proof: proofTwo,
+            proofFlags: proofFlagsTwo,
+            batchNonce: batchNonce + 1,
+            relayerAddress: "a_random_relayer_address"
+        }
+
+        const invalidRootSignature = bridge.transferToERC(relayerProofBadSignature)
         await expect(invalidRootSignature).to.be.revertedWith("Invalid validator set signature.")
 
+        const relayerProofBadNonceTwo = {
+            validatorSetArgs: currentValidatorSetArgs,
+            signatures: signatures,
+            transfers: validTransfers,
+            poolRoot: root,
+            proof: proof,
+            proofFlags: proofFlags,
+            batchNonce: batchNonce + 2,
+            relayerAddress: "a_random_relayer_address"
+        }
+
         // send invalid transfer (due to batch nonce)
-        const nonPresentTransfer = bridge.transferToERC(
-            currentValidatorSetArgs,
-            signatures,
-            validTransfers,
-            root,
-            proof,
-            proofFlags,
-            batchNonce + 2,
-            "a_random_relayer_address"
-        )
+        const nonPresentTransfer = bridge.transferToERC(relayerProofBadNonceTwo)
         await expect(nonPresentTransfer).to.be.revertedWith("Invalid batchNonce.")
 
         const transfersThree = [...Array(30).keys()].map(_ => {
@@ -264,32 +272,36 @@ describe("Bridge", function () {
 
         const signaturesThree = await generateSignatures(signers, ethers.utils.solidityKeccak256(['bytes32', 'uint256'], [rootThree, batchNonce + 1]));
 
+        const relayerProofTwo = {
+            validatorSetArgs: currentValidatorSetArgs,
+            signatures: signaturesThree,
+            transfers: validTransfersThree,
+            poolRoot: rootThree,
+            proof: proofThree,
+            proofFlags: proofFlagsThree,
+            batchNonce: batchNonce + 1,
+            relayerAddress: "a_random_relayer_address"
+        }
+
         // valid transfer
-        await bridge.transferToERC(
-            currentValidatorSetArgs,
-            signaturesThree,
-            validTransfersThree,
-            rootThree,
-            proofThree,
-            proofFlagsThree,
-            batchNonce + 1,
-            "a_random_relayer_address"
-        )
+        await bridge.transferToERC(relayerProofTwo)
 
         // invalid validator set 
         const invalidValidatorSet = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
         invalidValidatorSet.powers[0] = 0
 
-        const invalidValidatorSetTransfer = bridge.transferToERC(
-            invalidValidatorSet,
-            invalidSignature,
-            validTransfers,
-            root,
-            proofTwo,
-            proofFlagsTwo,
-            batchNonce + 2,
-            "a_random_relayer_address"
-        )
+        const relayerProofInvalidValidatorSet = {
+            validatorSetArgs: invalidValidatorSet,
+            signatures: signaturesThree,
+            transfers: validTransfersThree,
+            poolRoot: rootThree,
+            proof: proofThree,
+            proofFlags: proofFlagsThree,
+            batchNonce: batchNonce + 2,
+            relayerAddress: "a_random_relayer_address"
+        }
+
+        const invalidValidatorSetTransfer = bridge.transferToERC(relayerProofInvalidValidatorSet)
 
         await expect(invalidValidatorSetTransfer).to.be.revertedWith("Invalid currentValidatorSetHash.")
 
@@ -297,16 +309,18 @@ describe("Bridge", function () {
         const invalidValidatorSetTwo = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
         invalidValidatorSetTwo.powers.pop()
 
-        const invalidValidatorSetTransferTwo = bridge.transferToERC(
-            invalidValidatorSetTwo,
-            invalidSignature,
-            validTransfers,
-            root,
-            proofTwo,
-            proofFlagsTwo,
-            batchNonce + 2,
-            "a_random_relayer_address"
-        )
+        const relayerProofInvalidValidatorSetTwo = {
+            validatorSetArgs: invalidValidatorSetTwo,
+            signatures: signaturesThree,
+            transfers: validTransfersThree,
+            poolRoot: rootThree,
+            proof: proofThree,
+            proofFlags: proofFlagsThree,
+            batchNonce: batchNonce + 2,
+            relayerAddress: "a_random_relayer_address"
+        }
+
+        const invalidValidatorSetTransferTwo = bridge.transferToERC(relayerProofInvalidValidatorSetTwo)
 
         await expect(invalidValidatorSetTransferTwo).to.be.revertedWith("Mismatch array length.")
     });
@@ -511,16 +525,18 @@ describe("Bridge", function () {
 
         const signatures = await generateSignatures(signers, ethers.utils.solidityKeccak256(['bytes32', 'uint256'], [root, 1]));
 
-        const tx = await bridge.transferToERC(
-            currentValidatorSetArgs,
-            signatures,
-            validTransfers,
-            root,
-            proof,
-            proofFlags,
-            1,
-            "a_namada_address_relayer"
-        )
+        const relayerProofCorrect = {
+            validatorSetArgs: currentValidatorSetArgs,
+            signatures: signatures,
+            transfers: validTransfers,
+            poolRoot: root,
+            proof: proof,
+            proofFlags: proofFlags,
+            batchNonce: 1,
+            relayerAddress: "a_random_relayer_address"
+        }
+
+        const tx = await bridge.transferToERC(relayerProofCorrect)
 
         const receipt = await tx.wait()
 
@@ -535,7 +551,7 @@ describe("Bridge", function () {
         expect(event.args[0]).to.be.equal(ethers.BigNumber.from(1))
         expect(event.args[1].length).to.be.equal(2)
         expect(event.args[1].length).to.be.equal(proofLeaves.length)
-        expect(event.args[3]).to.be.equal("a_namada_address_relayer")
+        expect(event.args[3]).to.be.equal("a_random_relayer_address")
         
         // first transfer
         expect(event.args[1][0].from).to.be.equal(validTransfers[0].from)

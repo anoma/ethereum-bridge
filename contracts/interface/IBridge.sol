@@ -18,16 +18,7 @@ interface IBridge is ICommon {
 
     function transferToNamada(NamadaTransfer[] calldata trasfers, uint256 confirmations) external;
 
-    function transferToERC(
-        ValidatorSetArgs calldata _validatorSetArgs,
-        Signature[] calldata _signatures,
-        ERC20Transfer[] calldata _transfers,
-        bytes32 _poolRoot,
-        bytes32[] calldata _proof,
-        bool[] calldata _proofFlags,
-        uint256 batchNonce,
-        string calldata relayerAddress
-    ) external;
+    function transferToERC(RelayProof calldata relayProof) external;
 
     function updateTokenWhitelist(address[] calldata tokens, uint256[] calldata tokensCap) external;
 

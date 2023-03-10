@@ -101,13 +101,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         IBridge bridge = IBridge(bridgeAddress);
 
         bytes32 messageHash = keccak256(
-            abi.encode(
-                version,
-                "updateValidatorsSet",
-                _bridgeValidatorSetHash,
-                _governanceValidatorSetHash,
-                nonce
-            )
+            abi.encode(version, "updateValidatorsSet", _bridgeValidatorSetHash, _governanceValidatorSetHash, nonce)
         );
 
         validatorSetNonce = nonce;
