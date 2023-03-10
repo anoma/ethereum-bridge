@@ -97,9 +97,11 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
 
         bytes32[] memory leaves = new bytes32[](_transfers.length);
+        bool[] memory validTransfers = new bool[](_transfers.length);
         for (uint256 i = 0; i < _transfers.length; i++) {
             bytes32 transferHash = _computeTransferHash(_transfers[i]);
             leaves[i] = transferHash;
+            validTransfers[i] = tokenWhiteList[_transfers[i].from] != 0;
         }
 
         bytes32 root = MerkleProof.processMultiProof(_proof, _proofFlags, leaves);
@@ -111,39 +113,40 @@ contract Bridge is IBridge, ReentrancyGuard {
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
 
-        ERC20Transfer[] memory validTransfers = new ERC20Transfer[](_transfers.length);
-
-        validTransfers = vault.batchTransferToERC20(_transfers);
-        for (uint256 i = 0; i < validTransfers.length; i++) {
-            tokenWhiteList[validTransfers[i].from] += validTransfers[i].amount;
+        bool[] memory completedTransfers = vault.batchTransferToERC20(_transfers, validTransfers);
+        for (uint256 i = 0; i < _transfers.length; i++) {
+            if (completedTransfers[i]) {
+                tokenWhiteList[_transfers[i].from] += _transfers[i].amount;
+            }
         }
 
-        emit TransferToERC(transferToERC20Nonce, validTransfers, relayerAddress);
+        emit TransferToERC(transferToERC20Nonce, _transfers, validTransfers, relayerAddress);
     }
 
     // this function assumes that the the tokens are transfered from a ERC20 compliant contract
-    function transferToNamada(NamadaTransfer[] calldata _tranfers, uint256 confirmations) external nonReentrant {
+    function transferToNamada(NamadaTransfer[] calldata _transfers, uint256 confirmations) external nonReentrant {
         address vaultAddress = proxy.getContract("vault");
 
-        NamadaTransfer[] memory validTransfers = new NamadaTransfer[](_tranfers.length);
+        bool[] memory validMap = new bool[](_transfers.length);
 
-        for (uint256 i = 0; i < _tranfers.length; ++i) {
-            if (tokenWhiteList[_tranfers[i].from] == 0 || _tranfers[i].amount >= tokenWhiteList[_tranfers[i].from]) {
-                emit InvalidTransferToNamada(_tranfers[i].from, _tranfers[i].to, _tranfers[i].amount);
+        for (uint256 i = 0; i < _transfers.length; ++i) {
+            if (tokenWhiteList[_transfers[i].from] == 0 || _transfers[i].amount >= tokenWhiteList[_transfers[i].from]) {
+                validMap[i] = false;
                 continue;
             }
 
-            tokenWhiteList[_tranfers[i].from] -= _tranfers[i].amount;
+            tokenWhiteList[_transfers[i].from] -= _transfers[i].amount;
 
-            try IERC20(_tranfers[i].from).transferFrom(msg.sender, vaultAddress, _tranfers[i].amount) {
-                validTransfers[i] = _tranfers[i];
+            try IERC20(_transfers[i].from).transferFrom(msg.sender, vaultAddress, _transfers[i].amount) {
+                validMap[i] = true;
             } catch {
-                emit InvalidTransferToNamada(_tranfers[i].from, _tranfers[i].to, _tranfers[i].amount);
+                validMap[i] = false;
+                continue;
             }
         }
 
         transferToNamadaNonce = transferToNamadaNonce + 1;
-        emit TransferToNamada(transferToNamadaNonce, validTransfers, confirmations);
+        emit TransferToNamada(transferToNamadaNonce, _transfers, validMap, confirmations);
     }
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {

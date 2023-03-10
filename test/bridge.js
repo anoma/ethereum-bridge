@@ -454,8 +454,8 @@ describe("Bridge", function () {
 
         events.forEach(event => {
             expect(event.event).to.be.equal('TransferToNamada')
-            expect(event.eventSignature).to.be.equal('TransferToNamada(uint256,(address,uint256,string)[],uint256)')
-            expect(event.args.length).to.be.equal(3)
+            expect(event.eventSignature).to.be.equal('TransferToNamada(uint256,(address,uint256,string)[],bool[],uint256)')
+            expect(event.args.length).to.be.equal(4)
 
             expect(event.args[0]).to.be.equal(ethers.BigNumber.from(1))
 
@@ -467,7 +467,7 @@ describe("Bridge", function () {
             expect(event.args[1][1].to).to.be.equal('anamadaAddress')
             expect(event.args[1][1].amount).to.be.equal(ethers.BigNumber.from(2950))
 
-            expect(event.args[2]).to.be.equal(ethers.BigNumber.from(100))
+            expect(event.args[3]).to.be.equal(ethers.BigNumber.from(100))
         })
     })
 
@@ -530,12 +530,12 @@ describe("Bridge", function () {
         event = event[0]
 
         expect(event.event).to.be.equal('TransferToERC')
-        expect(event.eventSignature).to.be.equal('TransferToERC(uint256,(address,address,uint256,string,uint256,string)[],string)')
+        expect(event.eventSignature).to.be.equal('TransferToERC(uint256,(address,address,uint256,string,uint256,string)[],bool[],string)')
 
         expect(event.args[0]).to.be.equal(ethers.BigNumber.from(1))
         expect(event.args[1].length).to.be.equal(2)
         expect(event.args[1].length).to.be.equal(proofLeaves.length)
-        expect(event.args[2]).to.be.equal("a_namada_address_relayer")
+        expect(event.args[3]).to.be.equal("a_namada_address_relayer")
         
         // first transfer
         expect(event.args[1][0].from).to.be.equal(validTransfers[0].from)

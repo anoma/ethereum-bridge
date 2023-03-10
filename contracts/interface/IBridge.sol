@@ -4,11 +4,11 @@ pragma solidity ^0.8.17;
 import "./ICommon.sol";
 
 interface IBridge is ICommon {
-    event TransferToNamada(uint256 nonce, NamadaTransfer[] trasfers, uint256 confirmations);
+    event TransferToNamada(uint256 nonce, NamadaTransfer[] trasfers, bool[] validMap, uint256 confirmations);
 
     event InvalidTransferToNamada(address from, string to, uint256 amount);
 
-    event TransferToERC(uint256 indexed nonce, ERC20Transfer[] transfers, string relayerAddress);
+    event TransferToERC(uint256 indexed nonce, ERC20Transfer[] transfers, bool[] validMap, string relayerAddress);
 
     function authorize(
         ValidatorSetArgs calldata validatorSetArgs,
