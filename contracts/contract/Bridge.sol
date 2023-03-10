@@ -106,7 +106,7 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         require(_poolRoot == root, "Invalid transfers proof.");
 
-        transferToERC20Nonce = transferToERC20Nonce + 1;
+        transferToERC20Nonce = batchNonce;
 
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);

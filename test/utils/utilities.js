@@ -9,6 +9,11 @@ const randomPowers = (length = 20, min = 1, max = 100) => {
     return Array(length).fill().map(() => randomInteger(min, max))
 }
 
+const encoder = () => {
+    // return ethers.utils.defaultAbiCoder;
+    return ethers.utils.solidityPack;
+}
+
 const fixedPowers = (length = 20, signatureCheck = 1) => {
     const totalVotingPower = 1000000;
     const twoThirdVotingPower = (1000000 * 2) / 3
@@ -70,7 +75,7 @@ const generateSignatures = async (signers, message) => {
 }
 
 const generateArbitraryHash = (field, data) => {
-    let abiEncoded = ethers.utils.solidityPack(field, data);
+    let abiEncoded = encoder()(field, data);
     return ethers.utils.keccak256(abiEncoded);
 }
 
@@ -189,3 +194,4 @@ exports.ourMultiProof = ourMultiProof;
 exports.randomInteger = randomInteger;
 exports.fixedPowers = fixedPowers;
 exports.scrambleSignatures = scrambleSignatures;
+exports.encoder = encoder;

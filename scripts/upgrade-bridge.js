@@ -183,7 +183,7 @@ const generateSignatures = async (signers, message) => {
 }
 
 const generateArbitraryHash = (fields, data) => {
-    let abiEncoded = ethers.utils.solidityPack(fields, data);
+    let abiEncoded = encoder()(fields, data);
     return ethers.utils.keccak256(abiEncoded);
 }
 
