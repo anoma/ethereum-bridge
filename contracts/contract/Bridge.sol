@@ -170,7 +170,7 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         for (uint256 i = 0; i < validatorSet.powers.length; i++) {
             if (!isValidSignature(validatorSet.validators[i], _messageHash, _signatures[i])) {
-                return false;
+                continue;
             }
 
             powerAccumulator = powerAccumulator + validatorSet.powers[i];
@@ -230,13 +230,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    poolRoot,
-                    nonce
-                )
-            );
+        return keccak256(abi.encodePacked(poolRoot, nonce));
     }
 
     // duplicate since calldata can't be used in constructor

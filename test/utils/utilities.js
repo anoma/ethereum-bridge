@@ -1,14 +1,25 @@
 const { ethers } = require("hardhat");
 const { MerkleTree } = require('merkletreejs');
 
-
-
 function randomInteger(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 const randomPowers = (length = 20, min = 1, max = 100) => {
     return Array(length).fill().map(() => randomInteger(min, max))
+}
+
+const fixedPowers = (length = 20, signatureCheck = 1) => {
+    const totalVotingPower = 1000000;
+    const twoThirdVotingPower = (1000000 * 2) / 3
+    const powers = []
+    for (const o in [...Array(signatureCheck).keys()]) {
+        powers.push(twoThirdVotingPower / signatureCheck);
+    }
+    for (const o in [...Array(length - signatureCheck).keys()]) {
+        powers.push((totalVotingPower - twoThirdVotingPower) / (length - signatureCheck));
+    }
+    return powers
 }
 
 const computeThreshold = (powers) => {
@@ -73,6 +84,15 @@ const generateBatchTransferHash = (froms, tos, amounts, nonce, validatorSetHash,
 
 function randomInteger(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function scrambleSignatures(signatures) {
+    for (let step = 5; step < signatures.length - 5; step++) {
+        signatures[step].r = signatures[step + 1].r
+        signatures[step].s = signatures[step - 1].s
+        signatures[step].v = signatures[step + 1].v   
+    }
+    return signatures
 }
 
 function ourMultiProof(tree, leaves) {
@@ -167,3 +187,5 @@ exports.generateSignatures = generateSignatures;
 exports.generateArbitraryHash = generateArbitraryHash;
 exports.ourMultiProof = ourMultiProof;
 exports.randomInteger = randomInteger;
+exports.fixedPowers = fixedPowers;
+exports.scrambleSignatures = scrambleSignatures;

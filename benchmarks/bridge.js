@@ -44,14 +44,15 @@ const trasferToERC20 = async function (index) {
         return {
             'from': token.address,
             'to': ethers.Wallet.createRandom().address,
-            'amount': 5,
+            'amount': 100,
             'feeFrom': 'aNamadaAddress',
-            'fee': 1
+            'fee': 50,
+            'sender': "random_namada_address"
         }
     })
 
     const transferHashes = transfers.map(transfer => {
-        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
+        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])                
     }).map(keccak256)
 
     const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
@@ -60,7 +61,7 @@ const trasferToERC20 = async function (index) {
     const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
 
     const proofLeaves = transfers.slice(0, index).map(transfer => {
-        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "uint256"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, 1])
+        return ethers.utils.solidityPack(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
     }).map(keccak256).sort(Buffer.compare)
 
     const [root, proof, proofFlags] = ourMultiProof(merkleTree, proofLeaves)
@@ -69,7 +70,7 @@ const trasferToERC20 = async function (index) {
         return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
     }).map(index => transfers[index])
 
-    const signatures = await generateSignatures(signers, root);
+    const signatures = await generateSignatures(signers, ethers.utils.solidityKeccak256(['bytes32', 'uint256'], [root, 1]));
 
     try {
         const tx = await bridge.connect(anotherAddress).transferToERC(
@@ -79,7 +80,8 @@ const trasferToERC20 = async function (index) {
             root,
             proof,
             proofFlags,
-            1
+            1,
+            "namada_address"
         )
 
         const receipt = await tx.wait()

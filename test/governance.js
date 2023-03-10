@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash } = require("./utils/utilities")
+const { randomPowers, computeThreshold, getSignersAddresses, getSigners, normalizePowers, normalizeThreshold, generateValidatorSetArgs, generateSignatures, generateValidatorSetHash, generateArbitraryHash, scrambleSignatures } = require("./utils/utilities")
 
 describe("Governance", function () {
     let Proxy;
@@ -160,8 +160,8 @@ describe("Governance", function () {
         await expect(upgradeInvalidHash).to.be.revertedWith("Unauthorized.")
 
         // upgrade contract invalid signatures
-        const signaturesInvalidSignatures = await generateSignatures(governanceSigners, messageHash);
-        signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
+        let signaturesInvalidSignatures = await generateSignatures(governanceSigners, messageHash);
+        signaturesInvalidSignatures = scrambleSignatures(signaturesInvalidSignatures)
         const upgradeInvalidSignatures = governance.upgradeContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
         await expect(upgradeInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
@@ -196,9 +196,7 @@ describe("Governance", function () {
 
         // invalid add contract invalid signatures
         let signaturesInvalidSignatures = await generateSignatures(governanceSigners, messageHash);
-        signaturesInvalidSignatures[2].r = signaturesInvalidSignatures[0].r
-        signaturesInvalidSignatures[2].s = signaturesInvalidSignatures[0].s
-        signaturesInvalidSignatures[2].v = signaturesInvalidSignatures[0].v
+        signaturesInvalidSignatures = scrambleSignatures(signaturesInvalidSignatures)
         const addContractInvalidInvalidSignatures = governance.addContract(currentValidatorSetArgs, signaturesInvalidSignatures, contractName, newContractAddress)
         await expect(addContractInvalidInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
@@ -239,10 +237,8 @@ describe("Governance", function () {
         await expect(bridgeUpgradeInvalidMessageHash).to.be.revertedWith("Unauthorized.")
 
         // invalid bridge upgrade bad signatures
-        const signaturesInvalid = await generateSignatures(bridgeSigners, messageHash);
-        signaturesInvalid[3].r = signaturesInvalid[0].r
-        signaturesInvalid[3].s = signaturesInvalid[0].s
-        signaturesInvalid[3].v = signaturesInvalid[0].v
+        let signaturesInvalid = await generateSignatures(bridgeSigners, messageHash);
+        signaturesInvalid = scrambleSignatures(signaturesInvalid)
         const bridgeUpgradeInvalidSignatures = governance.upgradeBridgeContract(currentValidatorSetArgs, signaturesInvalid, newContractAddress)
         await expect(bridgeUpgradeInvalidSignatures).to.be.revertedWith("Unauthorized.")
 
