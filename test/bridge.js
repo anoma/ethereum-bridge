@@ -138,7 +138,7 @@ describe("Bridge", function () {
         }
 
         const transferHashes = transfers.map(transfer => {
-            return encoder()(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256)
 
         const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
@@ -147,7 +147,7 @@ describe("Bridge", function () {
         const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
 
         const proofLeaves = transfers.slice(0, 2).map(transfer => {
-            return encoder()(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256).sort(Buffer.compare)
 
         const [root, proof, proofFlags] = ourMultiProof(merkleTree, proofLeaves)
@@ -183,7 +183,7 @@ describe("Bridge", function () {
 
         // same root, invalid transfer to due nonce
         const proofLeavesTwo = [transfers[0], transfers[15], transfers[29]].map(transfer => {
-            return encoder()(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256).sort(Buffer.compare)
         const [rootTwo, proofTwo, proofFlagsTwo] = ourMultiProof(merkleTree, proofLeaves)
 
@@ -245,7 +245,7 @@ describe("Bridge", function () {
         })
 
         const transferHashesThree = transfersThree.map(transfer => {
-            return encoder()(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256)
 
         const transferHashesSortedThree = [...transferHashesThree].sort(Buffer.compare)
@@ -253,7 +253,7 @@ describe("Bridge", function () {
         // build merkle tree, generate proofs
         const merkleTreeThree = new MerkleTree(transferHashesSortedThree, keccak256, { hashLeaves: false, sort: true });
         const proofLeavesThree = [transfersThree[0], transfersThree[15], transfersThree[29]].map(transfer => {
-            return encoder()(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256).sort(Buffer.compare)
         
         const [rootThree, proofThree, proofFlagsThree] = ourMultiProof(merkleTreeThree, proofLeavesThree)
@@ -491,7 +491,7 @@ describe("Bridge", function () {
         }
 
         const transferHashes = transfers.map(transfer => {
-            return encoder()(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256)
 
         const transferHashesSorted = [...transferHashes].sort(Buffer.compare)
@@ -500,7 +500,7 @@ describe("Bridge", function () {
         const merkleTree = new MerkleTree(transferHashesSorted, keccak256, { hashLeaves: false, sort: true });
 
         const proofLeaves = transfers.slice(0, 2).map(transfer => {
-            return encoder()(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
+            return encoder().encode(["uint8", "string", "address", "address","uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
         }).map(keccak256).sort(Buffer.compare)
 
         const [root, proof, proofFlags] = ourMultiProof(merkleTree, proofLeaves)

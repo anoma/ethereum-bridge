@@ -55,20 +55,20 @@ contract Proxy is IProxy {
     }
 
     function getContract(string calldata _name) external view override returns (address) {
-        return contractStorage[keccak256(abi.encodePacked(_name))];
+        return contractStorage[keccak256(abi.encode(_name))];
     }
 
     function _getContract(string calldata _name) private view returns (address) {
-        return contractStorage[keccak256(abi.encodePacked(_name))];
+        return contractStorage[keccak256(abi.encode(_name))];
     }
 
     // by duplicating the function we can save some gas on later invocations
     function __getContract(string memory _name) private view returns (address) {
-        return contractStorage[keccak256(abi.encodePacked(_name))];
+        return contractStorage[keccak256(abi.encode(_name))];
     }
 
     function _setContract(string calldata _name, address _address) private {
-        contractStorage[keccak256(abi.encodePacked(_name))] = _address;
+        contractStorage[keccak256(abi.encode(_name))] = _address;
     }
 
     function _setExistContract(address _address) private {

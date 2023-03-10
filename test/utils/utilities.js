@@ -10,8 +10,8 @@ const randomPowers = (length = 20, min = 1, max = 100) => {
 }
 
 const encoder = () => {
-    // return ethers.utils.defaultAbiCoder;
-    return ethers.utils.solidityPack;
+    return ethers.utils.defaultAbiCoder;
+    // return ethers.utils.solidityPack;
 }
 
 const fixedPowers = (length = 20, signatureCheck = 1) => {
@@ -75,7 +75,7 @@ const generateSignatures = async (signers, message) => {
 }
 
 const generateArbitraryHash = (field, data) => {
-    let abiEncoded = encoder()(field, data);
+    let abiEncoded = encoder().encode(field, data);
     return ethers.utils.keccak256(abiEncoded);
 }
 

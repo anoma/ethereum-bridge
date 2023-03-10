@@ -154,7 +154,7 @@ const generateSignatures = async (signers, message) => {
 }
 
 const generateArbitraryHash = (fields, data) => {
-    let abiEncoded = encoder()(fields, data);
+    let abiEncoded = encoder().encode(fields, data);
     return ethers.utils.keccak256(abiEncoded);
 }
 

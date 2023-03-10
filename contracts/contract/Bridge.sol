@@ -203,7 +203,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     function _computeValidatorSetHash(ValidatorSetArgs calldata validatorSetArgs) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     version,
                     "bridge",
                     validatorSetArgs.validators,
@@ -216,7 +216,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     function _computeTransferHash(ERC20Transfer calldata transfer) internal view returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     version,
                     "transfer",
                     transfer.from,
@@ -230,7 +230,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(poolRoot, nonce));
+        return keccak256(abi.encode(poolRoot, nonce));
     }
 
     // duplicate since calldata can't be used in constructor
@@ -239,7 +239,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] memory powers,
         uint256 nonce
     ) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(version, "bridge", validators, powers, nonce));
+        return keccak256(abi.encode(version, "bridge", validators, powers, nonce));
     }
 
     function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
