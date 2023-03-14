@@ -4,7 +4,7 @@ const assert = require('assert');
 
 async function main(hre, configJsonPath) {
     console.log(`Running on network ${hre.network.name} with chain-id ${hre.network.config.chainId}`)
-    if (configJsonPath === '') {
+    if (!!!configJsonPath) {
         console.log("Deploying Ethereum bridge smart contracts interactively")
         const config = await build_config_interactively()
         const stateContent = await deploy(config)
