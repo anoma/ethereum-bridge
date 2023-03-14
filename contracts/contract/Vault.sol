@@ -13,7 +13,7 @@ contract Vault is IVault {
         proxy = IProxy(_proxy);
     }
 
-    function batchTransferToERC20(ERC20Transfer[] calldata _transfers, bool[] calldata _validTransfers)
+    function batchTransferToErc20(Erc20Transfer[] calldata _transfers, bool[] calldata _validTransfers)
         external
         onlyLatestBridgeContract
         returns (bool[] memory)

@@ -52,7 +52,7 @@ const trasferToERC20 = async function (index) {
     })
 
     const transferHashes = transfers.map(transfer => {
-        return encoder().encode(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])                
+        return encoder().encode(["uint8", "string", "address", "address", "uint256", "string", "uint256", "string"], [1, 'transfer', transfer.from, transfer.to, transfer.amount, transfer.feeFrom, transfer.fee, transfer.sender])
     }).map(keccak256)
 
     const transferHashesSorted = [...transferHashes].sort(Buffer.compare)

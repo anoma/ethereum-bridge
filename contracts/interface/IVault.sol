@@ -4,9 +4,9 @@ pragma solidity ^0.8.19;
 import "./ICommon.sol";
 
 interface IVault is ICommon {
-    event InvalidTransfer(ERC20Transfer transfer);
+    event InvalidTransfer(Erc20Transfer transfer);
 
-    function batchTransferToERC20(ERC20Transfer[] calldata tranfers, bool[] calldata validTransfers)
+    function batchTransferToErc20(Erc20Transfer[] calldata tranfers, bool[] calldata validTransfers)
         external
         returns (bool[] memory);
 }

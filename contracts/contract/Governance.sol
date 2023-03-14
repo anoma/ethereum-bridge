@@ -14,7 +14,7 @@ contract Governance is IGovernance, ReentrancyGuard {
     uint256 private immutable thresholdVotingPower;
 
     bytes32 public validatorSetHash;
-    uint256 public validatorSetNonce = 1;
+    uint256 public validatorSetNonce = 0;
 
     uint256 public whitelistNonce = 0;
 

@@ -20,7 +20,7 @@ interface ICommon {
         string to;
     }
 
-    struct ERC20Transfer {
+    struct Erc20Transfer {
         address from;
         address to;
         uint256 amount;
@@ -32,7 +32,7 @@ interface ICommon {
     struct RelayProof {
         ValidatorSetArgs validatorSetArgs;
         Signature[] signatures;
-        ERC20Transfer[] transfers;
+        Erc20Transfer[] transfers;
         bytes32 poolRoot;
         bytes32[] proof;
         bool[] proofFlags;
