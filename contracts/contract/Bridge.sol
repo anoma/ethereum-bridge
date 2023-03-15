@@ -73,7 +73,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function transferToErc(RelayProof calldata relayProof) external nonReentrant {
-        require(transferToErc20Nonce + 1 == relayProof.batchNonce, "Invalid batchNonce.");
+        require(transferToErc20Nonce == relayProof.batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(relayProof.validatorSetArgs, relayProof.signatures), "Mismatch array length.");
 
         require(
@@ -103,7 +103,7 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         require(relayProof.poolRoot == root, "Invalid transfers proof.");
 
-        transferToErc20Nonce = relayProof.batchNonce;
+        transferToErc20Nonce = relayProof.batchNonce + 1;
 
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
@@ -115,7 +115,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             }
         }
 
-        emit TransferToErc(transferToErc20Nonce, relayProof.transfers, validTransfers, relayProof.relayerAddress);
+        emit TransferToErc(relayProof.batchNonce, relayProof.transfers, validTransfers, relayProof.relayerAddress);
     }
 
     // this function assumes that the the tokens are transfered from a Erc20 compliant contract
@@ -228,7 +228,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return keccak256(abi.encode(poolRoot, nonce));
+        return keccak256(abi.encodePacked(poolRoot, nonce));
     }
 
     // duplicate since calldata can't be used in constructor
