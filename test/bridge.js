@@ -113,8 +113,8 @@ describe("Bridge", function () {
         await expect(resultInvalidValidatoSetHash).to.be.reverted;
     });
 
-    it("transferToERC20 testing", async function () {
-        const batchNonce = 1;
+    it("transferToErc20 testing", async function () {
+        const batchNonce = 0;
 
         const intialVaultBalance = await token.balanceOf(vault.address);
         expect(intialVaultBalance).to.be.equal(ethers.BigNumber.from(maxTokenSupply))
@@ -170,7 +170,7 @@ describe("Bridge", function () {
         }
 
         // valid transfer
-        await bridge.transferToERC(relayerProofCorrect)
+        await bridge.transferToErc(relayerProofCorrect)
 
         // check wallets balances
         let totalTransfered = 0
@@ -206,7 +206,7 @@ describe("Bridge", function () {
             relayerAddress: "a_random_relayer_address"
         }
 
-        const invalidNonceTransfer = bridge.transferToERC(relayerProofBadNonce)
+        const invalidNonceTransfer = bridge.transferToErc(relayerProofBadNonce)
         await expect(invalidNonceTransfer).to.be.revertedWith("Invalid batchNonce.")
 
         // invalid root signature
@@ -223,7 +223,7 @@ describe("Bridge", function () {
             relayerAddress: "a_random_relayer_address"
         }
 
-        const invalidRootSignature = bridge.transferToERC(relayerProofBadSignature)
+        const invalidRootSignature = bridge.transferToErc(relayerProofBadSignature)
         await expect(invalidRootSignature).to.be.revertedWith("Invalid validator set signature.")
 
         const relayerProofBadNonceTwo = {
@@ -238,7 +238,7 @@ describe("Bridge", function () {
         }
 
         // send invalid transfer (due to batch nonce)
-        const nonPresentTransfer = bridge.transferToERC(relayerProofBadNonceTwo)
+        const nonPresentTransfer = bridge.transferToErc(relayerProofBadNonceTwo)
         await expect(nonPresentTransfer).to.be.revertedWith("Invalid batchNonce.")
 
         const transfersThree = [...Array(30).keys()].map(_ => {
@@ -284,7 +284,7 @@ describe("Bridge", function () {
         }
 
         // valid transfer
-        await bridge.transferToERC(relayerProofTwo)
+        await bridge.transferToErc(relayerProofTwo)
 
         // invalid validator set 
         const invalidValidatorSet = generateValidatorSetArgs(validatorsAddresses, normalizedPowers, 0)
@@ -301,7 +301,7 @@ describe("Bridge", function () {
             relayerAddress: "a_random_relayer_address"
         }
 
-        const invalidValidatorSetTransfer = bridge.transferToERC(relayerProofInvalidValidatorSet)
+        const invalidValidatorSetTransfer = bridge.transferToErc(relayerProofInvalidValidatorSet)
 
         await expect(invalidValidatorSetTransfer).to.be.revertedWith("Invalid currentValidatorSetHash.")
 
@@ -320,7 +320,7 @@ describe("Bridge", function () {
             relayerAddress: "a_random_relayer_address"
         }
 
-        const invalidValidatorSetTransferTwo = bridge.transferToERC(relayerProofInvalidValidatorSetTwo)
+        const invalidValidatorSetTransferTwo = bridge.transferToErc(relayerProofInvalidValidatorSetTwo)
 
         await expect(invalidValidatorSetTransferTwo).to.be.revertedWith("Mismatch array length.")
     });
@@ -523,7 +523,7 @@ describe("Bridge", function () {
             return transferHashes.map(hashTransfer => hashTransfer.toString('hex')).findIndex(hexTransfer => hexTransfer == proof.toString('hex'))
         }).map(index => transfers[index])
 
-        const signatures = await generateSignatures(signers, ethers.utils.solidityKeccak256(['bytes32', 'uint256'], [root, 1]));
+        const signatures = await generateSignatures(signers, ethers.utils.solidityKeccak256(['bytes32', 'uint256'], [root, 0]));
 
         const relayerProofCorrect = {
             validatorSetArgs: currentValidatorSetArgs,
@@ -532,11 +532,11 @@ describe("Bridge", function () {
             poolRoot: root,
             proof: proof,
             proofFlags: proofFlags,
-            batchNonce: 1,
+            batchNonce: 0,
             relayerAddress: "a_random_relayer_address"
         }
 
-        const tx = await bridge.transferToERC(relayerProofCorrect)
+        const tx = await bridge.transferToErc(relayerProofCorrect)
 
         const receipt = await tx.wait()
 
@@ -545,10 +545,10 @@ describe("Bridge", function () {
 
         event = event[0]
 
-        expect(event.event).to.be.equal('TransferToERC')
-        expect(event.eventSignature).to.be.equal('TransferToERC(uint256,(address,address,uint256,string,uint256,string)[],bool[],string)')
+        expect(event.event).to.be.equal('TransferToErc')
+        expect(event.eventSignature).to.be.equal('TransferToErc(uint256,(address,address,uint256,string,uint256,string)[],bool[],string)')
 
-        expect(event.args[0]).to.be.equal(ethers.BigNumber.from(1))
+        expect(event.args[0]).to.be.equal(ethers.BigNumber.from(0))
         expect(event.args[1].length).to.be.equal(2)
         expect(event.args[1].length).to.be.equal(proofLeaves.length)
         expect(event.args[3]).to.be.equal("a_random_relayer_address")

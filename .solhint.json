@@ -11,6 +11,7 @@
     "func-param-name-mixedcase": "error",
     "modifier-name-mixedcase": "error",
     "var-name-mixedcase": "error",
-    "imports-on-top": "error"
+    "imports-on-top": "error",
+    "no-global-import": "off"
   }
 }

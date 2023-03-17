@@ -199,11 +199,10 @@ contract Governance is IGovernance, ReentrancyGuard {
         return keccak256(abi.encode(version, "governance", validators, powers, nonce));
     }
 
-    function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
-        internal
-        pure
-        returns (bool)
-    {
+    function _isEnoughVotingPower(
+        uint256[] memory _powers,
+        uint256 _thresholdVotingPower
+    ) internal pure returns (bool) {
         uint256 powerAccumulator = 0;
 
         for (uint256 i = 0; i < _powers.length; i++) {

@@ -13,11 +13,10 @@ contract Vault is IVault {
         proxy = IProxy(_proxy);
     }
 
-    function batchTransferToErc20(Erc20Transfer[] calldata _transfers, bool[] calldata _validTransfers)
-        external
-        onlyLatestBridgeContract
-        returns (bool[] memory)
-    {
+    function batchTransferToErc20(
+        Erc20Transfer[] calldata _transfers,
+        bool[] calldata _validTransfers
+    ) external onlyLatestBridgeContract returns (bool[] memory) {
         bool[] memory transfersStatus = new bool[](_transfers.length);
 
         for (uint256 i = 0; i < _transfers.length; ++i) {
