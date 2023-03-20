@@ -159,10 +159,10 @@ contract Bridge is IBridge, ReentrancyGuard {
         nextValidatorSetHash = _validatorSetHash;
     }
 
-    function updateTokenWhitelist(
-        address[] calldata _tokens,
-        uint256[] calldata _tokensCap
-    ) external onlyLatestGovernanceContract {
+    function updateTokenWhitelist(address[] calldata _tokens, uint256[] calldata _tokensCap)
+        external
+        onlyLatestGovernanceContract
+    {
         require(_tokens.length == _tokensCap.length, "Invalid inputs.");
         for (uint256 i = 0; i < _tokens.length; i++) {
             tokenWhiteList[_tokens[i]] = TokenCaps.Token(true, _tokensCap[i]);
@@ -251,10 +251,11 @@ contract Bridge is IBridge, ReentrancyGuard {
         return keccak256(abi.encode(version, "bridge", validators, powers, nonce));
     }
 
-    function _isEnoughVotingPower(
-        uint256[] memory _powers,
-        uint256 _thresholdVotingPower
-    ) internal pure returns (bool) {
+    function _isEnoughVotingPower(uint256[] memory _powers, uint256 _thresholdVotingPower)
+        internal
+        pure
+        returns (bool)
+    {
         uint256 powerAccumulator = 0;
 
         for (uint256 i = 0; i < _powers.length; i++) {
@@ -272,10 +273,11 @@ contract Bridge is IBridge, ReentrancyGuard {
             newValidatorSetArgs.validators.length == newValidatorSetArgs.powers.length;
     }
 
-    function _isValidSignatureSet(
-        ValidatorSetArgs calldata validatorSetArgs,
-        Signature[] calldata signature
-    ) internal pure returns (bool) {
+    function _isValidSignatureSet(ValidatorSetArgs calldata validatorSetArgs, Signature[] calldata signature)
+        internal
+        pure
+        returns (bool)
+    {
         return _isValidValidatorSetArg(validatorSetArgs) && validatorSetArgs.validators.length == signature.length;
     }
 
