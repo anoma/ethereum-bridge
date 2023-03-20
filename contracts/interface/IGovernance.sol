@@ -7,8 +7,8 @@ import "../interface/ICommon.sol";
 interface IGovernance is ICommon {
     event ValidatorSetUpdate(
         uint256 indexed validatorSetNonce,
-        bytes32 bridgeValidatoreSetHash,
-        bytes32 governanceValidatoreSetHash
+        bytes32 bridgeValidatorSetHash,
+        bytes32 governanceValidatorSetHash
     );
     event NewContract(string indexed name, address addr);
     event UpgradedContract(string indexed name, address addr);
