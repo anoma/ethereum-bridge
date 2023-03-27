@@ -122,7 +122,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             }
         }
 
-        emit TransferToErc(relayProof.batchNonce, relayProof.transfers, validTransfers, relayProof.relayerAddress);
+        emit TransferToErc(relayProof.batchNonce, relayProof.transfers, completedTransfers, relayProof.relayerAddress);
     }
 
     // this function assumes that the the tokens are transfered from a Erc20 compliant contract
