@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 library TokenCaps {
     struct Token {
+        bool exists;
         bool isWhitelisted;
         uint256 cap;
     }
@@ -59,7 +60,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         for (uint256 i = 0; i < _tokenList.length; ++i) {
             address tokenAddress = _tokenList[i];
             uint256 tokenCap = _tokenCap[i];
-            tokenWhiteList[tokenAddress] = TokenCaps.Token(true, tokenCap);
+            tokenWhiteList[tokenAddress] = TokenCaps.Token(true, true, tokenCap);
         }
 
         proxy = IProxy(_proxy);
@@ -99,11 +100,11 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
 
         bytes32[] memory leaves = new bytes32[](relayProof.transfers.length);
-        bool[] memory validTransfers = new bool[](relayProof.transfers.length);
+        bool[] memory validTransferableToken = new bool[](relayProof.transfers.length);
         for (uint256 i = 0; i < relayProof.transfers.length; i++) {
             bytes32 transferHash = _computeTransferHash(relayProof.transfers[i]);
             leaves[i] = transferHash;
-            validTransfers[i] = tokenWhiteList[relayProof.transfers[i].from].isWhitelisted;
+            validTransferableToken[i] = tokenWhiteList[relayProof.transfers[i].from].exists;
         }
 
         bytes32 root = MerkleProof.processMultiProof(relayProof.proof, relayProof.proofFlags, leaves);
@@ -115,7 +116,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
 
-        bool[] memory completedTransfers = vault.batchTransferToErc20(relayProof.transfers, validTransfers);
+        bool[] memory completedTransfers = vault.batchTransferToErc20(relayProof.transfers, validTransferableToken);
         for (uint256 i = 0; i < relayProof.transfers.length; i++) {
             if (completedTransfers[i]) {
                 tokenWhiteList[relayProof.transfers[i].from].cap += relayProof.transfers[i].amount;
@@ -165,7 +166,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     ) external onlyLatestGovernanceContract {
         require(_tokens.length == _tokensCap.length, "Invalid inputs.");
         for (uint256 i = 0; i < _tokens.length; i++) {
-            tokenWhiteList[_tokens[i]] = TokenCaps.Token(true, _tokensCap[i]);
+            tokenWhiteList[_tokens[i]] = TokenCaps.Token(true, true, _tokensCap[i]);
         }
     }
 
