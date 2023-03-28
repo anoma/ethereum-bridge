@@ -150,8 +150,10 @@ contract Bridge is IBridge, ReentrancyGuard {
             }
         }
 
+        uint256 currentNonce = transferToNamadaNonce;
         transferToNamadaNonce = transferToNamadaNonce + 1;
-        emit TransferToNamada(transferToNamadaNonce, _transfers, validMap, confirmations);
+
+        emit TransferToNamada(currentNonce, _transfers, validMap, confirmations);
     }
 
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
