@@ -26,8 +26,8 @@ contract Bridge is IBridge, ReentrancyGuard {
     bytes32 public currentValidatorSetHash;
     bytes32 public nextValidatorSetHash;
 
-    uint256 private transferToErc20Nonce = 0;
-    uint256 private transferToNamadaNonce = 0;
+    uint256 public transferToErc20Nonce = 0;
+    uint256 public transferToNamadaNonce = 0;
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
