@@ -12,7 +12,6 @@ interface IGovernance is ICommon {
     );
     event NewContract(string indexed name, address addr);
     event UpgradedContract(string indexed name, address addr);
-    event UpdateBridgeWhitelist(uint256 indexed nonce, address[] tokens, uint256[] tokenCap);
 
     function upgradeContract(
         ValidatorSetArgs calldata validators,

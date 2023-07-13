@@ -137,8 +137,6 @@ contract Governance is IGovernance, ReentrancyGuard {
 
         whitelistNonce = whitelistNonce + 1;
         bridge.updateTokenWhitelist(_tokens, _tokensCap);
-
-        emit UpdateBridgeWhitelist(whitelistNonce - 1, _tokens, _tokensCap);
     }
 
     function authorize(
