@@ -20,8 +20,6 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 public transferToErc20Nonce = 0;
     uint256 public transferToNamadaNonce = 0;
 
-    uint256 private constant MAX_NONCE_INCREMENT = 10000;
-
     IProxy private proxy;
 
     constructor(

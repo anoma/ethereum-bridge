@@ -16,8 +16,6 @@ contract Governance is IGovernance, ReentrancyGuard {
     bytes32 public validatorSetHash;
     uint256 public validatorSetNonce = 0;
 
-    uint256 private constant MAX_NONCE_INCREMENT = 10000;
-
     IProxy private proxy;
 
     constructor(
