@@ -13,24 +13,31 @@ contract Governance is IGovernance, ReentrancyGuard {
     uint8 private immutable version;
     uint256 private immutable thresholdVotingPower;
 
-    bytes32 public validatorSetHash;
+    bytes32 public currentValidatorSetHash;
+    bytes32 public nextValidatorSetHash;
     uint256 public validatorSetNonce = 0;
 
     IProxy private proxy;
 
     constructor(
         uint8 _version,
-        address[] memory _validators,
-        uint256[] memory _powers,
+        address[] memory _currentValidators,
+        uint256[] memory _currentPowers,
+        address[] memory _nextValidators,
+        uint256[] memory _nextPowers,
         uint256 _thresholdVotingPower,
         IProxy _proxy
     ) {
-        require(_validators.length == _powers.length, "Mismatch array length.");
-        require(_isEnoughVotingPower(_powers, _thresholdVotingPower), "Invalid voting power threshold.");
+        require(_currentValidators.length == _currentPowers.length, "Mismatch array length.");
+        require(_nextValidators.length == _nextPowers.length, "Mismatch array length.");
+        require(_isEnoughVotingPower(_currentPowers, _thresholdVotingPower), "Invalid voting power threshold.");
+        require(_isEnoughVotingPower(_nextPowers, _thresholdVotingPower), "Invalid voting power threshold.");
 
         version = _version;
-        validatorSetHash = _computeValidatorSetHash(_validators, _powers, 0);
         thresholdVotingPower = _thresholdVotingPower;
+        currentValidatorSetHash = _computeValidatorSetHash(_currentValidators, _currentPowers, 0);
+        nextValidatorSetHash = _computeValidatorSetHash(_nextValidators, _nextPowers, 0);
+
         proxy = IProxy(_proxy);
     }
 
@@ -104,7 +111,8 @@ contract Governance is IGovernance, ReentrancyGuard {
 
         require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
 
-        validatorSetHash = _governanceValidatorSetHash;
+        currentValidatorSetHash = nextValidatorSetHash;
+        nextValidatorSetHash = _governanceValidatorSetHash;
         bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
 
         emit ValidatorSetUpdate(validatorSetNonce, _governanceValidatorSetHash, _bridgeValidatorSetHash);
@@ -116,7 +124,7 @@ contract Governance is IGovernance, ReentrancyGuard {
         bytes32 _messageHash
     ) private view returns (bool) {
         require(_validators.validators.length == _validators.powers.length, "Malformed input.");
-        require(_computeValidatorSetHash(_validators) == validatorSetHash, "Invalid validatorSetHash.");
+        require(_computeValidatorSetHash(_validators) == currentValidatorSetHash, "Invalid currentValidatorSetHash.");
 
         uint256 powerAccumulator = 0;
         for (uint256 i = 0; i < _validators.powers.length; i++) {
