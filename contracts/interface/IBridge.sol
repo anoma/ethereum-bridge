@@ -18,7 +18,5 @@ interface IBridge is ICommon {
 
     function transferToErc(RelayProof calldata relayProof) external;
 
-    function updateTokenWhitelist(address[] calldata tokens, uint256[] calldata tokensCap) external;
-
     function updateValidatorSetHash(bytes32 _validatorSetHash) external;
 }

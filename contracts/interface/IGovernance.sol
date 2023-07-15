@@ -40,11 +40,4 @@ interface IGovernance is ICommon {
         Signature[] calldata signatures,
         uint256 nonce
     ) external;
-
-    function updateBridgeWhitelist(
-        ValidatorSetArgs calldata currentValidatorSetArgs,
-        address[] calldata tokens,
-        uint256[] calldata tokensCap,
-        Signature[] calldata signatures
-    ) external;
 }

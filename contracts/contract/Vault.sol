@@ -14,17 +14,11 @@ contract Vault is IVault {
     }
 
     function batchTransferToErc20(
-        Erc20Transfer[] calldata _transfers,
-        bool[] calldata _validTransfers
+        Erc20Transfer[] calldata _transfers
     ) external onlyLatestBridgeContract returns (bool[] memory) {
         bool[] memory transfersStatus = new bool[](_transfers.length);
 
         for (uint256 i = 0; i < _transfers.length; ++i) {
-            if (!_validTransfers[i]) {
-                transfersStatus[i] = false;
-                continue;
-            }
-
             try IERC20(_transfers[i].from).transfer(_transfers[i].to, _transfers[i].amount) {
                 transfersStatus[i] = true;
             } catch {

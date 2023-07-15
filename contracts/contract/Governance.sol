@@ -16,8 +16,6 @@ contract Governance is IGovernance, ReentrancyGuard {
     bytes32 public validatorSetHash;
     uint256 public validatorSetNonce = 0;
 
-    uint256 public whitelistNonce = 0;
-
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
     IProxy private proxy;
@@ -112,31 +110,6 @@ contract Governance is IGovernance, ReentrancyGuard {
         bridge.updateValidatorSetHash(_bridgeValidatorSetHash);
 
         emit ValidatorSetUpdate(validatorSetNonce, _governanceValidatorSetHash, _bridgeValidatorSetHash);
-    }
-
-    function updateBridgeWhitelist(
-        ValidatorSetArgs calldata _currentValidatorSetArgs,
-        address[] calldata _tokens,
-        uint256[] calldata _tokensCap,
-        Signature[] calldata _signatures
-    ) external {
-        require(
-            _currentValidatorSetArgs.validators.length == _currentValidatorSetArgs.powers.length &&
-                _currentValidatorSetArgs.validators.length == _signatures.length,
-            "Malformed input."
-        );
-
-        address bridgeAddress = proxy.getContract("bridge");
-        IBridge bridge = IBridge(bridgeAddress);
-
-        bytes32 messageHash = keccak256(
-            abi.encode(version, "updateBridgeWhitelist", _tokens, _tokensCap, whitelistNonce)
-        );
-
-        require(bridge.authorize(_currentValidatorSetArgs, _signatures, messageHash), "Unauthorized.");
-
-        whitelistNonce = whitelistNonce + 1;
-        bridge.updateTokenWhitelist(_tokens, _tokensCap);
     }
 
     function authorize(

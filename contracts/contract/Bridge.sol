@@ -10,14 +10,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-library TokenCaps {
-    struct Token {
-        bool exists;
-        bool isWhitelisted;
-        uint256 cap;
-    }
-}
-
 contract Bridge is IBridge, ReentrancyGuard {
     uint8 private immutable version;
     uint256 private immutable thresholdVotingPower;
@@ -30,8 +22,6 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     uint256 private constant MAX_NONCE_INCREMENT = 10000;
 
-    mapping(address => TokenCaps.Token) private tokenWhiteList;
-
     IProxy private proxy;
 
     constructor(
@@ -40,14 +30,11 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256[] memory _currentPowers,
         address[] memory _nextValidators,
         uint256[] memory _nextPowers,
-        address[] memory _tokenList,
-        uint256[] memory _tokenCap,
         uint256 _thresholdVotingPower,
         IProxy _proxy
     ) {
         require(_currentValidators.length == _currentPowers.length, "Mismatch array length.");
         require(_nextValidators.length == _nextPowers.length, "Mismatch array length.");
-        require(_tokenList.length == _tokenCap.length, "Invalid token whitelist.");
         require(_isEnoughVotingPower(_currentPowers, _thresholdVotingPower), "Invalid voting power threshold.");
         require(_isEnoughVotingPower(_nextPowers, _thresholdVotingPower), "Invalid voting power threshold.");
 
@@ -55,12 +42,6 @@ contract Bridge is IBridge, ReentrancyGuard {
         thresholdVotingPower = _thresholdVotingPower;
         currentValidatorSetHash = _computeValidatorSetHash(_currentValidators, _currentPowers, 0);
         nextValidatorSetHash = _computeValidatorSetHash(_nextValidators, _nextPowers, 0);
-
-        for (uint256 i = 0; i < _tokenList.length; ++i) {
-            address tokenAddress = _tokenList[i];
-            uint256 tokenCap = _tokenCap[i];
-            tokenWhiteList[tokenAddress] = TokenCaps.Token(true, true, tokenCap);
-        }
 
         proxy = IProxy(_proxy);
     }
@@ -99,11 +80,10 @@ contract Bridge is IBridge, ReentrancyGuard {
         );
 
         bytes32[] memory leaves = new bytes32[](relayProof.transfers.length);
-        bool[] memory validTransferableToken = new bool[](relayProof.transfers.length);
+
         for (uint256 i = 0; i < relayProof.transfers.length; i++) {
             bytes32 transferHash = _computeTransferHash(relayProof.transfers[i]);
             leaves[i] = transferHash;
-            validTransferableToken[i] = tokenWhiteList[relayProof.transfers[i].from].exists;
         }
 
         bytes32 root = MerkleProof.processMultiProof(relayProof.proof, relayProof.proofFlags, leaves);
@@ -115,12 +95,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         address vaultAddress = proxy.getContract("vault");
         IVault vault = IVault(vaultAddress);
 
-        bool[] memory completedTransfers = vault.batchTransferToErc20(relayProof.transfers, validTransferableToken);
-        for (uint256 i = 0; i < relayProof.transfers.length; i++) {
-            if (completedTransfers[i]) {
-                tokenWhiteList[relayProof.transfers[i].from].cap += relayProof.transfers[i].amount;
-            }
-        }
+        bool[] memory completedTransfers = vault.batchTransferToErc20(relayProof.transfers);
 
         emit TransferToErc(relayProof.batchNonce, relayProof.transfers, completedTransfers, relayProof.relayerAddress);
     }
@@ -132,16 +107,6 @@ contract Bridge is IBridge, ReentrancyGuard {
         bool[] memory validMap = new bool[](_transfers.length);
 
         for (uint256 i = 0; i < _transfers.length; ++i) {
-            if (
-                !tokenWhiteList[_transfers[i].from].isWhitelisted ||
-                _transfers[i].amount >= tokenWhiteList[_transfers[i].from].cap
-            ) {
-                validMap[i] = false;
-                continue;
-            }
-
-            tokenWhiteList[_transfers[i].from].cap -= _transfers[i].amount;
-
             try IERC20(_transfers[i].from).transferFrom(msg.sender, vaultAddress, _transfers[i].amount) {
                 validMap[i] = true;
             } catch {
@@ -159,16 +124,6 @@ contract Bridge is IBridge, ReentrancyGuard {
     function updateValidatorSetHash(bytes32 _validatorSetHash) external onlyLatestGovernanceContract {
         currentValidatorSetHash = nextValidatorSetHash;
         nextValidatorSetHash = _validatorSetHash;
-    }
-
-    function updateTokenWhitelist(
-        address[] calldata _tokens,
-        uint256[] calldata _tokensCap
-    ) external onlyLatestGovernanceContract {
-        require(_tokens.length == _tokensCap.length, "Invalid inputs.");
-        for (uint256 i = 0; i < _tokens.length; i++) {
-            tokenWhiteList[_tokens[i]] = TokenCaps.Token(true, true, _tokensCap[i]);
-        }
     }
 
     function checkValidatorSetVotingPowerAndSignature(
@@ -189,11 +144,6 @@ contract Bridge is IBridge, ReentrancyGuard {
             }
         }
         return powerAccumulator >= thresholdVotingPower;
-    }
-
-    function getWhitelistAmountFor(address tokenAddress) external view returns (uint256) {
-        require(tokenWhiteList[tokenAddress].isWhitelisted, "Not whitelisted.");
-        return tokenWhiteList[tokenAddress].cap;
     }
 
     function isValidSignature(
