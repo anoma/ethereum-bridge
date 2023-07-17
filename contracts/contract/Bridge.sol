@@ -109,7 +109,6 @@ contract Bridge is IBridge, ReentrancyGuard {
                 validMap[i] = true;
             } catch {
                 validMap[i] = false;
-                continue;
             }
         }
 
