@@ -6,7 +6,7 @@ async function main(hre, configJsonPath) {
     console.log(`Running on network ${hre.network.name} with chain-id ${hre.network.config.chainId}`)
     if (!!!configJsonPath) {
         console.log("Deploying Ethereum bridge smart contracts interactively")
-        const config = await build_config_interactively()
+        const config = await buildConfigInteractively()
         const stateContent = await deploy(config)
         await writeState(stateContent)
     } else {
@@ -24,7 +24,7 @@ module.exports = {
 /**
  * Builds a Config object interactively, prompting the deployer to provide the required information on the command line.
  */
-async function build_config_interactively() {
+async function buildConfigInteractively() {
     const { correctNetwork } = await prompt.get([{
         name: 'correctNetwork',
         required: true,
@@ -33,7 +33,7 @@ async function build_config_interactively() {
     }])
 
     if (!correctNetwork) {
-        return;
+        throw new Error('Network is not correct');
     }
 
     const { bridgeValidatorSetPath } = await prompt.get([{
@@ -57,19 +57,11 @@ async function build_config_interactively() {
         type: 'string'
     }])
 
-    if (!isValidJsonFile(bridgeValidatorSetPath) || !isValidJsonFile(nextBridgeValidatorSetPath) || !isValidJsonFile(governanceValidatorSetPath)) {
-        return;
-    }
-
-    if (!isValidValidatorSet(bridgeValidatorSetPath) || !isValidValidatorSet(nextBridgeValidatorSetPath) | !isValidValidatorSet(governanceValidatorSetPath)) {
-        return
-    }
-
-    const { wnamTokenSupply } = await prompt.get([{
-        name: 'wnamTokenSupply',
+    const { nextGovernanceValidatorSetPath } = await prompt.get([{
+        name: 'nextGovernanceValidatorSetPath',
         required: true,
-        description: "Total wrapped NAM ERC20 token supply",
-        type: 'number'
+        description: "Full path to next governance validator set json file",
+        type: 'string'
     }])
 
     const [deployer] = await ethers.getSigners();
@@ -84,33 +76,98 @@ async function build_config_interactively() {
     }])
 
     if (!correctSigner) {
-        return;
+        throw new Error('Signer is not correct');
     }
-
-    const { tokenWhitelistPrompt } = await prompt.get([{
-        name: 'tokenWhitelistPrompt',
-        required: false,
-        description: "Whitelisted token addresses, comma separated (not including wNAM)",
-        type: 'string',
-        default: ''
-    }])
-
-    const { tokenCapsPrompt } = await prompt.get([{
-        name: 'tokenCapsPrompt',
-        required: false,
-        description: "Whitelisted token caps, comma separated (not including wNAM)",
-        type: 'string',
-        default: ''
-    }])
 
     return {
         bridgeValidatorSetPath,
         nextBridgeValidatorSetPath,
         governanceValidatorSetPath,
-        wnamTokenSupply,
-        tokenWhitelistPrompt,
-        tokenCapsPrompt,
+        nextGovernanceValidatorSetPath,
     }
+}
+
+/**
+ * Validate a validator set, and return contract paramters.
+ *
+ * @param {Object} config  Configuration for deploying an Ethereum bridge.
+ *
+ * @returns {Object}  An object containing contract constructor parameters.
+ *
+ */
+function validateValidatorSet(currentValidatorSetPath, nextValidatorSetPath) {
+    const validJson = isValidJsonFile(currentValidatorSetPath)
+        && isValidJsonFile(nextValidatorSetPath);
+    if (!validJson) {
+        throw new Error('Validator set is not a valid json file');
+    }
+
+    const validValidatorSet = isValidValidatorSet(currentValidatorSetPath)
+        && isValidValidatorSet(nextValidatorSetPath);
+    if (!validValidatorSet) {
+        throw new Error('Validator set json file is not correct');
+    }
+
+    // current validator set constructor parameters
+    const currentValidatorSetContent = fs.readFileSync(currentValidatorSetPath)
+    const currentValidatorSet = JSON.parse(currentValidatorSetContent)
+
+    const currentValidators = Object.keys(currentValidatorSet)
+    const currentVotingPowers = Object.values(currentValidatorSet)
+    const currentVotingPowerThreshold = computeThreshold(currentVotingPowers)
+
+    // next validator set contructor parameters
+    const nextValidatorSetContent = fs.readFileSync(nextValidatorSetPath)
+    const nextValidatorSet = JSON.parse(nextValidatorSetContent)
+
+    const nextValidators = Object.keys(nextValidatorSet)
+    const nextVotingPowers = Object.values(nextValidatorSet)
+    const nextVotingPowerThreshold = computeThreshold(nextVotingPowers)
+
+    // validate voting powers
+    assert(nextVotingPowerThreshold > currentVotingPowerThreshold - 10)
+    assert(nextVotingPowerThreshold < currentVotingPowerThreshold + 10)
+
+    return {
+        currentValidators,
+        currentVotingPowers,
+        currentVotingPowerThreshold,
+        nextValidators,
+        nextVotingPowers,
+        nextVotingPowerThreshold,
+    };
+}
+
+/**
+ * Returns a set of constructor params from the given config.
+ *
+ * @param {Object} config  Configuration for deploying an Ethereum bridge.
+ *
+ * @returns {Object}  An object containing parameters for the bridge and governance.
+ *
+ */
+function getContractParameters(config) {
+    // error if config isn't passed
+    if (!config) {
+        throw new Error('No deployment config was passed')
+    }
+    const {
+        bridgeValidatorSetPath,
+        nextBridgeValidatorSetPath,
+        governanceValidatorSetPath,
+        nextGovernanceValidatorSetPath,
+    } = config;
+
+    return {
+        bridge: validateValidatorSet(
+            bridgeValidatorSetPath,
+            nextBridgeValidatorSetPath,
+        ),
+        governance: validateValidatorSet(
+            governanceValidatorSetPath,
+            nextGovernanceValidatorSetPath,
+        ),
+    };
 }
 
 /**
@@ -122,48 +179,7 @@ async function build_config_interactively() {
  *
  * **/
 async function deploy(config) {
-    // error if config isn't passed
-    if (!config) {
-        throw new Error('No deployment config was passed')
-    }
-    const {
-        bridgeValidatorSetPath,
-        nextBridgeValidatorSetPath,
-        governanceValidatorSetPath,
-        wnamTokenSupply,
-        tokenWhitelistPrompt,
-        tokenCapsPrompt,
-    } = config;
-
-    // bridge constructors parameters
-    const bridgeValidatorSetContent = fs.readFileSync(bridgeValidatorSetPath)
-    const bridgeValidatorSet = JSON.parse(bridgeValidatorSetContent)
-
-    const bridgeValidators = Object.keys(bridgeValidatorSet)
-    const bridgeVotingPowers = Object.values(bridgeValidatorSet)
-    const bridgeVotingPowerThreshold = computeThreshold(bridgeVotingPowers)
-
-    // next bridge contructor parameters
-    const nextBridgeValidatorSetContent = fs.readFileSync(nextBridgeValidatorSetPath)
-    const nextBridgeValidatorSet = JSON.parse(nextBridgeValidatorSetContent)
-
-    const nextBridgeValidators = Object.keys(nextBridgeValidatorSet)
-    const nextBridgeVotingPowers = Object.values(nextBridgeValidatorSet)
-    const nextBridgeVotingPowerThreshold = computeThreshold(nextBridgeVotingPowers)
-
-    assert(nextBridgeVotingPowerThreshold > bridgeVotingPowerThreshold - 10)
-    assert(nextBridgeVotingPowerThreshold < bridgeVotingPowerThreshold + 10)
-
-    // governance constroctor parameters
-    const governanceValidatorSetContent = fs.readFileSync(governanceValidatorSetPath)
-    const governanceValidatorSet = JSON.parse(governanceValidatorSetContent)
-
-    const governanceValidators = Object.keys(governanceValidatorSet)
-    const governanceVotingPowers = Object.values(governanceValidatorSet)
-    const governanceVotingPowerThreshold = computeThreshold(governanceVotingPowers)
-
-    assert(governanceVotingPowerThreshold > bridgeVotingPowerThreshold - 10)
-    assert(governanceVotingPowerThreshold < bridgeVotingPowerThreshold + 10)
+    const parameters = getContractParameters(config);
 
     const Proxy = await ethers.getContractFactory("Proxy");
     const Bridge = await ethers.getContractFactory("Bridge");
@@ -171,22 +187,40 @@ async function deploy(config) {
     const Vault = await ethers.getContractFactory("Vault");
     const Token = await ethers.getContractFactory("Token");
 
-    const proxy = await Proxy.deploy();
+    const proxyInitArgs = [];
+    const proxy = await Proxy.deploy(...proxyInitArgs);
     await proxy.deployed();
 
-    const vault = await Vault.deploy(proxy.address);
+    const vaultInitArgs = [proxy.address];
+    const vault = await Vault.deploy(...vaultInitArgs);
     await vault.deployed();
 
-    const wnamToken = await Token.deploy("Wrapper Namada", "WNAM", [wnamTokenSupply], [vault.address]);
+    const wnamTokenInitArgs = [vault.address, "Wrapper Namada", "WNAM"];
+    const wnamToken = await Token.deploy(...wnamTokenInitArgs);
     await wnamToken.deployed();
 
-    const tokenWhitelist = tokenWhitelistPrompt.length == 0 ? [wnamToken.address] : tokenWhitelistPrompt.split(',').map(token => token.trim()).concat(wnamToken.address)
-    const tokenCaps = tokenCapsPrompt.length == 0 ? [wnamTokenSupply] : tokenCapsPrompt.split(',').map(cap => parseInt(cap)).concat(wnamTokenSupply)
-
-    const bridge = await Bridge.deploy(1, bridgeValidators, bridgeVotingPowers, nextBridgeValidators, nextBridgeVotingPowers, tokenWhitelist, tokenCaps, bridgeVotingPowerThreshold, proxy.address);
+    const bridgeInitArgs = [
+        1,
+        parameters.bridge.currentValidators,
+        parameters.bridge.currentVotingPowers,
+        parameters.bridge.nextValidators,
+        parameters.bridge.nextVotingPowers,
+        parameters.bridge.currentVotingPowerThreshold,
+        proxy.address,
+    ];
+    const bridge = await Bridge.deploy(...bridgeInitArgs);
     await bridge.deployed();
 
-    const governance = await Governance.deploy(1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, proxy.address);
+    const governanceInitArgs = [
+        1,
+        parameters.governance.currentValidators,
+        parameters.governance.currentVotingPowers,
+        parameters.governance.nextValidators,
+        parameters.governance.nextVotingPowers,
+        parameters.governance.currentVotingPowerThreshold,
+        proxy.address,
+    ];
+    const governance = await Governance.deploy(...governanceInitArgs);
     await governance.deployed()
 
     await proxy.addContract("governance", governance.address);
@@ -202,10 +236,10 @@ async function deploy(config) {
     console.log(`wNAM token address: ${wnamToken.address}`)
     console.log("")
 
-    await etherscan(proxy.address, [], hre.network.name);
-    await etherscan(governance.address, [1, governanceValidators, governanceVotingPowers, governanceVotingPowerThreshold, proxy.address], hre.network.name);
-    await etherscan(bridge.address, [1, bridgeValidators, bridgeVotingPowers, bridgeVotingPowerThreshold, proxy.address], hre.network.name);
-    await etherscan(wnamToken.address, ["Wrapper Namada", "WNAM", wnamTokenSupply, bridge.address], hre.network.name);
+    await etherscan(proxy.address, proxyInitArgs, hre.network.name);
+    await etherscan(governance.address, governanceInitArgs, hre.network.name);
+    await etherscan(bridge.address, bridgeInitArgs, hre.network.name);
+    await etherscan(wnamToken.address, wnamTokenInitArgs, hre.network.name);
 
     console.log("Running checks...")
     const governanceAddressProxy = await proxy.getContract("governance")
@@ -215,7 +249,14 @@ async function deploy(config) {
     assert(bridgeAddressProxy == bridge.address)
     console.log("Looking good!")
 
-    return constructStateContent(proxy.address, governance.address, bridge.address, wnamToken.address, hre.network.name, hre.network.config.chainId)
+    return constructStateContent(
+        proxy.address,
+        governance.address,
+        bridge.address,
+        wnamToken.address,
+        hre.network.name,
+        hre.network.config.chainId,
+    );
 }
 
 function constructStateContent(proxyAddress, governanceAddress, bridgeAddress, wnamAddress, networkName, networkChainId) {
