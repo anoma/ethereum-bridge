@@ -14,7 +14,7 @@ interface IBridge is ICommon {
 
     function transferToChain(ChainTransfer[] calldata transfers, uint256 confirmations) external;
 
-    function transferToErc(RelayProof calldata relayProof) external;
+    function transferToErc(ValidatorSetArgs calldata validatorSetArgs, Signature[] calldata signatures, RelayProof calldata relayProof) external;
 
     function updateValidatorSet(
         ValidatorSetArgs calldata currentValidatorSetArgs,

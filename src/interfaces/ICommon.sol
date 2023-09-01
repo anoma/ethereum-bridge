@@ -32,8 +32,6 @@ interface ICommon {
     }
 
     struct RelayProof {
-        ValidatorSetArgs validatorSetArgs;
-        Signature[] signatures;
         Erc20Transfer[] transfers;
         bytes32 poolRoot;
         bytes32[] proof;

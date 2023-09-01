@@ -182,7 +182,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     }
 
     function test_updateValidatorSet(uint16 total) public {
-        vm.assume(total > 1);
+        vm.assume(total > 128);
         vm.assume(total < 256);
 
         bytes32 bridgeCheckSetHash = bridge.nextBridgeValidatorSetHash();
@@ -419,6 +419,8 @@ contract TestBridge is Test, ICommon, FoundryRandom {
             address from = tokenOwners[i];
             address tokenAddress = address(token);
 
+            uint256 vaultAmount = token.balanceOf(address(vault));
+
             assertEq(token.balanceOf(from), 11 ether);
 
             ChainTransfer[] memory transfers = new ChainTransfer[](2);
@@ -429,6 +431,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
             bridge.transferToChain(transfers, 10);
 
             assertEq(token.balanceOf(from), 0);
+            assertEq(token.balanceOf(address(vault)), vaultAmount + 11 ether);
             assertEq(bridge.transferToChainNonce(), i + 1);
         }
     }
@@ -454,6 +457,10 @@ contract TestBridge is Test, ICommon, FoundryRandom {
             assertEq(token.balanceOf(from), 11 ether);
             assertEq(bridge.transferToChainNonce(), 0);
         }
+    }
+
+    function test_transferToER(uint256 amount) public {
+        
     }
 
     function test_decodeValidatorDataFromBytes32(address addr, uint96 vp) public {

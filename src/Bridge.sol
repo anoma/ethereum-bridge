@@ -55,7 +55,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     // all transfers in the batch must be valid or the whole batch will revert
-    function transferToChain(ChainTransfer[] calldata _transfers, uint256 confirmations) external {
+    function transferToChain(ChainTransfer[] calldata _transfers, uint256 confirmations) external nonReentrant {
         address vaultAddress = proxy.getContract("vault");
 
         for (uint256 i = 0; i < _transfers.length; ++i) {
@@ -69,19 +69,19 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     // all transfers in the relay proof must be valid or the whole batch will revert
-    function transferToErc(RelayProof calldata relayProof) external nonReentrant {
+    function transferToErc(ValidatorSetArgs calldata validatorSetArgs, Signature[] calldata signatures, RelayProof calldata relayProof) external nonReentrant {
         require(transferToErc20Nonce == relayProof.batchNonce, "Invalid batchNonce.");
-        require(_isValidSignatureSet(relayProof.validatorSetArgs, relayProof.signatures), "Mismatch array length.");
+        require(_isValidSignatureSet(validatorSetArgs, signatures), "Mismatch array length.");
 
         require(
-            _computeValidatorSetHash("bridge", relayProof.validatorSetArgs) == currentBridgeValidatorSetHash,
+            _computeValidatorSetHash("bridge", validatorSetArgs) == currentBridgeValidatorSetHash,
             "Invalid currentValidatorSetHash."
         );
 
         bytes32 trasferPoolRoot = _computeTransferPoolRootHash(relayProof.poolRoot, relayProof.batchNonce);
         require(
             _checkValidatorSetVotingPowerAndSignature(
-                relayProof.validatorSetArgs, relayProof.signatures, trasferPoolRoot
+                validatorSetArgs, signatures, trasferPoolRoot
             ),
             "Invalid validator set signature."
         );
@@ -135,7 +135,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         Erc20Transfer[] calldata transfers,
         Signature[] calldata _signatures,
         uint256 _nonce
-    ) external {
+    ) external nonReentrant {
         require(withdrawNonce + 1 == _nonce, "Invalid nonce.");
         require(_isValidSignatureSet(_currentValidatorSetArgs, _signatures), "Malformed input.");
 
@@ -326,6 +326,8 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     // implementation copied from openzeppeling 
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/MerkleProof.sol#L163
+    // we changed the hashing function `_hashPair` to include a prefix 
+    // this is done to avoid any second pre-image attack
     function processMultiProofCalldata(
         bytes32[] calldata proof,
         bool[] calldata proofFlags,
@@ -376,7 +378,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             mstore(0x00, a)
             mstore(0x20, b)
             mstore(0x40, prefix)
-            value := keccak256(0x00, 0x48)
+            value := keccak256(0x00, 0x41) // 32bytes + 32bytes + 1bytes -> 65bytes -> 0x41 hex
         }
     }
 
