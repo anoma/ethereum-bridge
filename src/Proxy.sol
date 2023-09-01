@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Apache-2.0
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.21;
 
 import "src/interfaces/IProxy.sol";
@@ -15,7 +15,7 @@ contract Proxy is IProxy {
 
     function completeContractInit() external {
         require(owner == msg.sender, "Must be called by owner.");
-        
+
         string memory contractName = "bridge";
         require(__getContract(contractName) != address(0), "Bridge contract must exist.");
 
@@ -26,7 +26,7 @@ contract Proxy is IProxy {
     function upgradeContract(string calldata _name, address _address) external override bridgeOrOwner {
         require(owner == address(0), "Proxy must be initialized.");
         require(_address != address(0), "Invalid address.");
-        
+
         address oldAddress = _getContract(_name);
         require(oldAddress != address(0), "Invalid contract.");
         require(oldAddress != _address, "Address must be different.");

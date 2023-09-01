@@ -1,9 +1,9 @@
-//SPDX-License-Identifier: Apache-2.0
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.21;
 
 interface ICommon {
     struct ValidatorSetArgs {
-        bytes32 validatorSet;
+        bytes32[] validatorSet;
         uint256 nonce;
     }
 
@@ -14,8 +14,8 @@ interface ICommon {
     }
 
     struct ChainTransfer {
-        address from;
         uint256 amount;
+        address from;
         string to;
     }
 
@@ -25,23 +25,16 @@ interface ICommon {
     }
 
     struct Erc20Transfer {
+        bytes32 dataDigest;
+        uint256 amount;
         address from;
         address to;
-        uint256 amount;
-    }
-
-    struct Erc20TransferInfo {
-        Erc20TransferKind kind;
-        string feeFrom;
-        uint256 fee;
-        string sender;
     }
 
     struct RelayProof {
         ValidatorSetArgs validatorSetArgs;
         Signature[] signatures;
         Erc20Transfer[] transfers;
-        Erc20TransferInfo[] transfersInfo;
         bytes32 poolRoot;
         bytes32[] proof;
         bool[] proofFlags;

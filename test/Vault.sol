@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.21;
 
 import "src/Proxy.sol";
@@ -17,7 +17,7 @@ contract TestVault is Test, ICommon {
     function setUp() public {
         proxy = new Proxy();
         vault = new Vault(proxy);
-        
+
         proxy.addContract("bridge", bridgeAddress);
         proxy.addContract("vault", address(vault));
         proxy.completeContractInit();
@@ -35,7 +35,7 @@ contract TestVault is Test, ICommon {
         vm.startPrank(bridgeAddress);
         address to = vm.addr(100);
         Erc20Transfer[] memory transfers = new Erc20Transfer[](1);
-        Erc20Transfer memory transfer = Erc20Transfer(address(token), to, 10);
+        Erc20Transfer memory transfer = Erc20Transfer(bytes32(0), 10, address(token), to);
         transfers[0] = transfer;
         vault.batchTransferToErc20(transfers);
         vm.stopPrank();
@@ -44,7 +44,7 @@ contract TestVault is Test, ICommon {
     function test_bridgeInvalidCaller() public {
         address to = vm.addr(100);
         Erc20Transfer[] memory transfers = new Erc20Transfer[](1);
-        Erc20Transfer memory transfer = Erc20Transfer(address(token), to, 10);
+        Erc20Transfer memory transfer = Erc20Transfer(bytes32(0), 10, address(token), to);
         transfers[0] = transfer;
         vm.expectRevert("Invalid caller.");
         vault.batchTransferToErc20(transfers);
@@ -55,11 +55,10 @@ contract TestVault is Test, ICommon {
         address to = vm.addr(100);
         address invalidToken = vm.addr(28);
         Erc20Transfer[] memory transfers = new Erc20Transfer[](1);
-        Erc20Transfer memory transfer = Erc20Transfer(invalidToken, to, 10);
+        Erc20Transfer memory transfer = Erc20Transfer(bytes32(0), 10, invalidToken, to);
         transfers[0] = transfer;
         vm.expectRevert();
         vault.batchTransferToErc20(transfers);
         vm.stopPrank();
     }
-
 }

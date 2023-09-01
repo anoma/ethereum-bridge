@@ -1,6 +1,64 @@
 [profile.default]
-src = "src"
-out = "out"
+auto_detect_solc = false
+bytecode_hash = "none"
+cbor_metadata = false
+evm_version = "shanghai"
+fuzz = {runs = 20}
+gas_reports = ["*"]
 libs = ["lib"]
+optimizer = true
+optimizer_runs = 10_000
+out = "out"
+script = "script"
+solc = "0.8.21"
+src = "src"
+test = "test"
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+[profile.ci]
+fuzz = {runs = 100}
+verbosity = 4
+
+[profile.hardcore]
+fuzz = {runs = 1000}
+verbosity = 4
+
+[profile.default.optimizer_details]
+constantOptimizer = true
+yul = true
+
+[profile.default.optimizer_details.yulDetails]
+optimizerSteps = 'dhfoDgvulfnTUtnIf'
+stackAllocation = true
+
+[etherscan]
+arbitrum_one = {key = "${API_KEY_ARBISCAN}"}
+avalanche = {key = "${API_KEY_SNOWTRACE}"}
+bnb_smart_chain = {key = "${API_KEY_BSCSCAN}"}
+gnosis_chain = {key = "${API_KEY_GNOSISSCAN}"}
+goerli = {key = "${API_KEY_ETHERSCAN}"}
+mainnet = {key = "${API_KEY_ETHERSCAN}"}
+optimism = {key = "${API_KEY_OPTIMISTIC_ETHERSCAN}"}
+polygon = {key = "${API_KEY_POLYGONSCAN}"}
+sepolia = {key = "${API_KEY_ETHERSCAN}"}
+
+[fmt]
+bracket_spacing = true
+int_types = "long"
+line_length = 120
+multiline_func_header = "all"
+number_underscore = "thousands"
+quote_style = "double"
+tab_width = 4
+wrap_comments = true
+
+[rpc_endpoints]
+arbitrum_one = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"
+avalanche = "https://avalanche-mainnet.infura.io/v3/${API_KEY_INFURA}"
+bnb_smart_chain = "https://bsc-dataseed.binance.org"
+gnosis_chain = "https://rpc.gnosischain.com"
+goerli = "https://goerli.infura.io/v3/${API_KEY_INFURA}"
+localhost = "http://localhost:8545"
+mainnet = "https://eth-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
+optimism = "https://optimism-mainnet.infura.io/v3/${API_KEY_INFURA}"
+polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
+sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
