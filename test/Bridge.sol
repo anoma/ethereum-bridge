@@ -460,6 +460,42 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         }
     }
 
+    function test_transferToErcValid(uint8 total, uint8 toProve) public {
+        vm.assume(total > 10);
+        vm.assume(total < 50);
+        vm.assume(toProve <= total);
+        vm.assume(toProve >= 1);
+
+        uint256 vaultPreBalance = token.balanceOf(address(vault));
+
+        (Erc20Transfer[] memory transfers, Erc20Transfer[] memory transfersToProve, uint256 toProveSum) = _createTransfers(total, toProve);
+        (bytes32[] memory sortedTransferHashes, ) = _computeSortedTransferHashes(transfers);
+        (bytes32[] memory hashedTransfersToProve, uint256[] memory indexes) = _computeSortedTransferHashes(transfersToProve);
+
+        Erc20Transfer[] memory transfersToProveSorted = _sortTransfersWithIndexes(transfers, indexes);
+
+        bytes32 bridgePoolRoot = _computeRoot(sortedTransferHashes);
+
+        (bytes32[] memory proofs, bool[] memory flags) = _computeTransfersProof(sortedTransferHashes, hashedTransfersToProve);
+
+        bytes32 message = _computeTransferToErcMessage(bridgePoolRoot, 0);
+
+        Signature[] memory signatures = _computeSignatures(bridgeValidatorSet.length, message);
+
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 2 ** 256 - 1);   
+
+        RelayProof memory relayProof = RelayProof(transfersToProveSorted, bridgePoolRoot, proofs, flags, 0, "anamadaaddress");
+
+        bridge.transferToErc(validatorSetArgs, signatures, relayProof);
+        
+        assertEq(vaultPreBalance - token.balanceOf(address(vault)), toProveSum);
+        assertEq(bridge.transferToErc20Nonce(), 1);
+
+        for (uint256 i = 0; i < transfersToProveSorted.length; i++) {
+            assertEq(transfersToProveSorted[i].amount, token.balanceOf(transfersToProveSorted[i].to));
+        }
+    }
+
     function test_decodeValidatorDataFromBytes32(address addr, uint96 vp) public {
         vm.assume(addr != 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
@@ -473,6 +509,25 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         
         assertEq(decodedVotingPower, vp);
         assertEq(decodedAddress, addr);
+    }
+
+    function test_checkComputeRoot() public {
+        bytes32 a = bytes32(0x54ab92b1648fc1f4299e531c745504e678ffa751f2e3a073e2f1d3bf0dd41652);
+        bytes32 b = bytes32(0x5bf8f5bfb0a5e73bba2e350a9e712287e4e3b40ce260ac106a8280fd6c18beac);
+        bytes32 c = bytes32(0xc862bf83972bfaa4715054114c4dd7c424d98158fce8d7b25491a2a4b256ddb8);
+
+        bytes32 one = _hashPair(a, b, bytes1(0));
+        bytes32 two = _hashPair(c, bytes32(0), bytes1(0));
+        bytes32 three = _hashPair(one, two, ~bytes1(0));
+
+        bytes32[] memory transfersHashes = new bytes32[](3);
+        transfersHashes[0] = a;
+        transfersHashes[1] = b;
+        transfersHashes[2] = c;
+
+        bytes32 testRoot = _computeRoot(transfersHashes);
+        
+        assertEq(testRoot, three);
     }
 
     // same as bridge._getVotingPower(bytes32)
@@ -565,36 +620,6 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         }
 
         return normalizedVotingPowers;
-    }
-
-    function test_transferToErcValid(uint8 total, uint8 toProve) public {
-        vm.assume(total > 10);
-        vm.assume(total < 50);
-        vm.assume(toProve <= total);
-        vm.assume(toProve >= 0);
-
-        (Erc20Transfer[] memory transfers, Erc20Transfer[] memory transfersToProve, uint256 toProveSum) = _createTransfers(total, toProve);
-        (bytes32[] memory sortedTransferHashes, ) = _computeSortedTransferHashes(transfers);
-        (bytes32[] memory hashedTransfersToProve, uint256[] memory indexes) = _computeSortedTransferHashes(transfersToProve);
-
-        Erc20Transfer[] memory transfersToProveSorted = _sortTransfersWithIndexes(transfers, indexes);
-
-        bytes32 bridgePoolRoot = _computeRoot(sortedTransferHashes);
-
-        (bytes32[] memory proofs, bool[] memory flags) = _computeTransfersProof(sortedTransferHashes, hashedTransfersToProve);
-
-        bytes32 message = _computeTransferToErcMessage(bridgePoolRoot, 0);
-
-        Signature[] memory signatures = _computeSignatures(bridgeValidatorSet.length, message);
-
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 2 ** 256 - 1);   
-
-        RelayProof memory relayProof = RelayProof(transfersToProveSorted, bridgePoolRoot, proofs, flags, 0, "anamadaaddress");
-
-        bridge.transferToErc(validatorSetArgs, signatures, relayProof);
-        
-        assertEq((2 ** 256 - 1) - token.balanceOf(address(vault)), toProveSum);
-        assertEq(bridge.transferToErc20Nonce, 1);
     }
 
     function _computeTransferToErcMessage(bytes32 bridgePoolRoot, uint256 nonce) internal pure returns(bytes32) {
@@ -709,7 +734,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     // same as bridge._hashPair(bytes32 a, bytes32 b, bytes1 prefix)
     // its private so we can't call it from here
     function _hashPair(bytes32 a, bytes32 b, bytes1 prefix) private pure returns (bytes32) {
-        return a < b ? keccak256(abi.encode(a, b, prefix)); : keccak256(abi.encode(b, a, prefix));;
+        return a < b ? keccak256(abi.encode(a, b, prefix)) : keccak256(abi.encode(b, a, prefix));
     }
 
     struct Node {
@@ -808,24 +833,5 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         for (uint256 i = 0; i < array.length; i++) {
             console.logBool(array[i]);
         }
-    }
-
-    function test_checkRoot() public {
-        bytes32 a = bytes32(0x54ab92b1648fc1f4299e531c745504e678ffa751f2e3a073e2f1d3bf0dd41652);
-        bytes32 b = bytes32(0x5bf8f5bfb0a5e73bba2e350a9e712287e4e3b40ce260ac106a8280fd6c18beac);
-        bytes32 c = bytes32(0xc862bf83972bfaa4715054114c4dd7c424d98158fce8d7b25491a2a4b256ddb8);
-
-        bytes32 one = _hashPair(a, b, bytes1(0));
-        bytes32 two = _hashPair(c, bytes32(0), bytes1(0));
-        bytes32 three = _hashPair(one, two, ~bytes1(0));
-
-        bytes32[] memory transfersHashes = new bytes32[](3);
-        transfersHashes[0] = a;
-        transfersHashes[1] = b;
-        transfersHashes[2] = c;
-
-        bytes32 testRoot = _computeRoot(transfersHashes);
-        
-        assertEq(testRoot, three);
     }
 }

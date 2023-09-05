@@ -35,7 +35,6 @@ contract Bridge is IBridge, ReentrancyGuard {
     IProxy private immutable proxy;
 
     bytes1 private constant prefixMin = bytes1(0);
-    bytes1 private constant prefixMax = ~bytes1(0);
 
     constructor(
         uint8 _version,
@@ -76,6 +75,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     function transferToErc(ValidatorSetArgs calldata validatorSetArgs, Signature[] calldata signatures, RelayProof calldata relayProof) external nonReentrant {
         require(transferToErc20Nonce == relayProof.batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(validatorSetArgs, signatures), "Mismatch array length.");
+        require(relayProof.transfers.length > 0, "Invalid transfers count.");
         require(
             _computeValidatorSetHash("bridge", validatorSetArgs) == currentBridgeValidatorSetHash,
             "Invalid currentValidatorSetHash."
@@ -324,7 +324,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         bytes32 root,
         bytes32[] memory leaves
     ) internal pure returns (bool) {
-        return _processMultiProofCalldata(proof, proofFlags, leaves) == root && root != bytes32(0);
+        return _processMultiProofCalldata(proof, proofFlags, leaves) == root;
     }
 
     // implementation copied from openzeppeling 
@@ -349,7 +349,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 proofPos = 0;
 
         for (uint256 i = 0; i < totalHashes; i++) {
-            (bytes32 a, bytes1 prefix) = leafPos < leavesLen ? (leaves[leafPos++], prefixMin) : (hashes[hashPos++], prefixMax);
+            (bytes32 a, bytes1 prefix) = leafPos < leavesLen ? (leaves[leafPos++], prefixMin) : (hashes[hashPos++], ~prefixMin);
             bytes32 b = proofFlags[i]
                 ? (leafPos < leavesLen ? leaves[leafPos++] : hashes[hashPos++])
                 : proof[proofPos++];
@@ -371,7 +371,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _hashPair(bytes32 a, bytes32 b, bytes1 prefix) private pure returns (bytes32) {
-        return a < b ? keccak256(abi.encode(a, b, prefix)); : keccak256(abi.encode(b, a, prefix));;
+        return a < b ? keccak256(abi.encode(a, b, prefix)) : keccak256(abi.encode(b, a, prefix));
     }
 
     error MerkleProofInvalidMultiproof();
