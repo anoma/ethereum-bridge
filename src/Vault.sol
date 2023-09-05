@@ -11,17 +11,18 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract Vault is IVault, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    IProxy private proxy;
+    IProxy private immutable proxy;
 
     constructor(IProxy _proxy) {
         proxy = IProxy(_proxy);
     }
 
     function batchTransferToErc20(Erc20Transfer[] calldata _transfers) external _onlyBridge nonReentrant {
-        for (uint256 i = 0; i < _transfers.length; ++i) {
+        for (uint256 i = 0; i < _transfers.length;) {
             if (_transfers[i].amount > 0) {
                 IERC20(_transfers[i].from).safeTransfer(_transfers[i].to, _transfers[i].amount);
             }
+            unchecked { i++; }
         }
     }
 

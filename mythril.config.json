@@ -1,0 +1,13 @@
+{
+  "remappings": [
+    "src/=src/",
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/=lib/openzeppelin-contracts/",
+    "foundry-random=lib/foundry-random/src/"
+  ],
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  }
+}

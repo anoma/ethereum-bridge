@@ -9,6 +9,7 @@ import "src/interfaces/ICommon.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import { FoundryRandom } from "foundry-random/FoundryRandom.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract TestBridge is Test, ICommon, FoundryRandom {
     IProxy proxy;
@@ -27,8 +28,8 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     address[] tokenOwners = new address[](3);
 
     function setUp() public {
-        bytes32[] memory _bridgeValidatorSet = _createValidatorSet(10, MAX_UINT96);
-        bytes32[] memory _governanceValidatorSet = _createValidatorSet(10, MAX_UINT96);
+        bytes32[] memory _bridgeValidatorSet = _createValidatorSet(120, MAX_UINT96);
+        bytes32[] memory _governanceValidatorSet = _createValidatorSet(120, MAX_UINT96);
 
         proxy = new Proxy();
         bridge = new Bridge(1, _bridgeValidatorSet, _bridgeValidatorSet, _governanceValidatorSet, _governanceValidatorSet, proxy);
@@ -127,7 +128,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
 
         ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 1);        
 
-        vm.expectRevert("Invalid currentValidatorSetHash.");
+        vm.expectRevert("Invalid validatorSetHash.");
         bridge.updateValidatorSet(
             validatorSetArgs,
             nextBridgeValidatorSet,
@@ -181,8 +182,8 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         assertEq(bridge.validatorSetNonce(), 0);
     }
 
-    function test_updateValidatorSet(uint16 total) public {
-        vm.assume(total > 128);
+    function test_updateValidatorSetValid(uint8 total) public {
+        vm.assume(total > 60);
         vm.assume(total < 256);
 
         bytes32 bridgeCheckSetHash = bridge.nextBridgeValidatorSetHash();
@@ -217,7 +218,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         assertEq(bridge.validatorSetNonce(), 1);
     }
 
-    function test_withdraw() public {
+    function test_withdrawValid() public {
         uint256 amount = token.balanceOf(address(vault));
         address to = vm.addr(100);
         
@@ -300,7 +301,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         
         ValidatorSetArgs memory invalidValidatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 1);        
 
-        vm.expectRevert("Invalid currentValidatorSetHash.");
+        vm.expectRevert("Invalid validatorSetHash.");
         bridge.withdraw(
             invalidValidatorSetArgs,
             transfers,
@@ -391,7 +392,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         
         ValidatorSetArgs memory invalidValidatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 1);        
 
-        vm.expectRevert("Invalid currentValidatorSetHash.");
+        vm.expectRevert("Invalid validatorSetHash.");
         bridge.upgrade(
             invalidValidatorSetArgs,
             signatures,
@@ -457,10 +458,6 @@ contract TestBridge is Test, ICommon, FoundryRandom {
             assertEq(token.balanceOf(from), 11 ether);
             assertEq(bridge.transferToChainNonce(), 0);
         }
-    }
-
-    function test_transferToER(uint256 amount) public {
-        
     }
 
     function test_decodeValidatorDataFromBytes32(address addr, uint96 vp) public {
@@ -568,5 +565,267 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         }
 
         return normalizedVotingPowers;
+    }
+
+    function test_transferToErcValid(uint8 total, uint8 toProve) public {
+        vm.assume(total > 10);
+        vm.assume(total < 50);
+        vm.assume(toProve <= total);
+        vm.assume(toProve >= 0);
+
+        (Erc20Transfer[] memory transfers, Erc20Transfer[] memory transfersToProve, uint256 toProveSum) = _createTransfers(total, toProve);
+        (bytes32[] memory sortedTransferHashes, ) = _computeSortedTransferHashes(transfers);
+        (bytes32[] memory hashedTransfersToProve, uint256[] memory indexes) = _computeSortedTransferHashes(transfersToProve);
+
+        Erc20Transfer[] memory transfersToProveSorted = _sortTransfersWithIndexes(transfers, indexes);
+
+        bytes32 bridgePoolRoot = _computeRoot(sortedTransferHashes);
+
+        (bytes32[] memory proofs, bool[] memory flags) = _computeTransfersProof(sortedTransferHashes, hashedTransfersToProve);
+
+        bytes32 message = _computeTransferToErcMessage(bridgePoolRoot, 0);
+
+        Signature[] memory signatures = _computeSignatures(bridgeValidatorSet.length, message);
+
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 2 ** 256 - 1);   
+
+        RelayProof memory relayProof = RelayProof(transfersToProveSorted, bridgePoolRoot, proofs, flags, 0, "anamadaaddress");
+
+        bridge.transferToErc(validatorSetArgs, signatures, relayProof);
+        
+        assertEq((2 ** 256 - 1) - token.balanceOf(address(vault)), toProveSum);
+        assertEq(bridge.transferToErc20Nonce, 1);
+    }
+
+    function _computeTransferToErcMessage(bytes32 bridgePoolRoot, uint256 nonce) internal pure returns(bytes32) {
+        return keccak256(abi.encode(bridgePoolRoot, nonce));
+    }
+
+    function _computeTransferHash(Erc20Transfer memory transfer) internal pure returns(bytes32) {
+        return keccak256(abi.encode(1, "transfer", transfer.from, transfer.to, transfer.amount, transfer.dataDigest));
+    }
+
+    function _sortTransfersWithIndexes(Erc20Transfer[] memory transfers, uint256[] memory indexes) internal pure returns(Erc20Transfer[] memory) {
+        Erc20Transfer[] memory sortedTransfers = new Erc20Transfer[](indexes.length);
+        for (uint256 i = 0; i < indexes.length; i++) {
+            sortedTransfers[i] = Erc20Transfer(transfers[indexes[i]].dataDigest, transfers[indexes[i]].amount, transfers[indexes[i]].from, transfers[indexes[i]].to);
+        }
+        return sortedTransfers;
+    }
+
+    function _computeSignatures(uint256 totalSignatures, bytes32 message) internal pure returns(Signature[] memory) {
+        Signature[] memory signatures = new Signature[](totalSignatures);
+        for (uint256 i = 0; i < totalSignatures; i++) {
+            signatures[i] = _signMessage(i, message);
+        }
+        return signatures;
+    }
+
+    function _createTransfers(uint256 total, uint256 toProve) internal returns(Erc20Transfer[] memory, Erc20Transfer[] memory, uint256 amount) {
+        Erc20Transfer[] memory transfers = new Erc20Transfer[](total);
+        Erc20Transfer[] memory transferToProve = new Erc20Transfer[](toProve);
+
+        uint256 toProveAmountSum = 0;
+        for (uint256 i = 0; i < transfers.length; i++) {
+            uint256 transferAmount = randomNumber(1000);
+            Erc20Transfer memory transfer = Erc20Transfer(randomBytes32(), transferAmount, address(token), vm.addr(i + 10000));
+            if (i < toProve) {
+                transferToProve[i] = transfer;
+                toProveAmountSum += transferAmount;
+            }
+            transfers[i] = transfer;
+            
+        }
+        return (transfers, transferToProve, toProveAmountSum);
+    }
+    
+    function _computeSortedTransferHashes(Erc20Transfer[] memory transfers) internal pure returns (bytes32[] memory, uint256[] memory) {
+        bytes32[] memory hashes = new bytes32[](transfers.length);
+        for (uint256 i = 0; i < transfers.length; i++) {
+            hashes[i] = _computeTransferHash(transfers[i]);
+        }
+        (bytes32[] memory sortedHashedTransfers, uint256[] memory indexes) = _sort(hashes);
+
+        return (sortedHashedTransfers, indexes);
+    }
+
+    function _sort(bytes32[] memory array) internal pure returns(bytes32[] memory, uint256[] memory) {
+        uint256[] memory indexes = new uint256[](array.length);
+        for (uint256 k = 0; k < indexes.length; k++) {
+            indexes[k] = k;
+        }
+
+        uint256 i = 1;
+
+        while(i < array.length) {
+            uint256 j = i;
+            while (j > 0 && array[j - 1] > array[j]) {
+                bytes32 tmp = array[j];
+                array[j] = array[j - 1];
+                array[j - 1] = tmp;
+
+                uint256 tmpIdx = indexes[j];
+                indexes[j] = indexes[j - 1];
+                indexes[j - 1] = tmpIdx;
+
+                j -= 1;
+            }
+            i = i + 1;
+        }
+        return (array, indexes);
+    }
+
+    function _computeRoot(bytes32[] memory hashedLeaves) internal pure returns (bytes32) {
+        bytes1 prefix = bytes1(0);
+
+        while (hashedLeaves.length > 1) {
+            bytes32[] memory nextHashes = new bytes32[](Math.ceilDiv(hashedLeaves.length, 2));
+            
+            uint256 i = 0;
+            uint256 j = 0;
+
+            while (i < hashedLeaves.length) {
+                bytes32 left = hashedLeaves[i];
+                bytes32 right = bytes32(0);
+                
+                if (i + 1 < hashedLeaves.length) {
+                    right = hashedLeaves[i + 1];
+                }
+                
+                nextHashes[j] = _hashPair(left, right, prefix);
+                i += 2;
+                j += 1;
+            }
+            prefix = ~bytes1(0);
+            hashedLeaves = nextHashes;
+        }
+        if (hashedLeaves.length > 0) {
+            return hashedLeaves[0];
+        } else {
+            return bytes32(0);
+        }
+    }
+
+    // same as bridge._hashPair(bytes32 a, bytes32 b, bytes1 prefix)
+    // its private so we can't call it from here
+    function _hashPair(bytes32 a, bytes32 b, bytes1 prefix) private pure returns (bytes32) {
+        return a < b ? keccak256(abi.encode(a, b, prefix)); : keccak256(abi.encode(b, a, prefix));;
+    }
+
+    struct Node {
+        bool onPath;
+        bytes32 nodeHash;
+    }
+
+    function _computeTransfersProof(bytes32[] memory hashedLeaves, bytes32[] memory hashedTransfers) internal pure returns (bytes32[] memory, bool[] memory) {
+        Node[] memory nodes = new Node[](hashedLeaves.length);
+        for (uint256 i = 0; i < hashedLeaves.length; i++) {
+            bool found = false;
+            for (uint256 j = 0; j < hashedTransfers.length; j++) {
+                if (hashedTransfers[j] == hashedLeaves[i]) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                nodes[i] = Node(true, hashedLeaves[i]);
+            } else {
+                nodes[i] = Node(false, hashedLeaves[i]);
+            }
+        }
+
+        bytes32[] memory proofHashes = new bytes32[](hashedLeaves.length * 2 + 1);
+        bool[] memory flags = new bool[](hashedLeaves.length * 2 + 1);
+
+        uint256 flagPos = 0;
+        uint256 proofHashesPos = 0;
+
+        bytes1 prefix = bytes1(0);
+
+        while (nodes.length > 1) {
+            Node[] memory nextNodes = new Node[](Math.ceilDiv(nodes.length, 2));
+            uint256 i = 0;
+            uint256 nextNodesPos = 0;
+
+            while (i < nodes.length) {
+                Node memory left = nodes[i];
+                Node memory right = Node(false, bytes32(0));
+                
+                if (i + 1 < nodes.length) {
+                    right = nodes[i + 1];
+                }
+
+                bytes32 hashPair = _hashPair(left.nodeHash, right.nodeHash, prefix);
+
+                if (left.onPath && right.onPath) {
+                    flags[flagPos++] = true;
+                    nextNodes[nextNodesPos++] = Node(true, hashPair);
+                } else if (left.onPath && !right.onPath) {
+                    flags[flagPos++] = false;
+                    proofHashes[proofHashesPos++] = right.nodeHash;
+                    nextNodes[nextNodesPos++] = Node(true, hashPair);
+                } else if (!left.onPath && right.onPath) {
+                    flags[flagPos++] = false;
+                    proofHashes[proofHashesPos++] = left.nodeHash;
+                    nextNodes[nextNodesPos++] = Node(true, hashPair);
+                } else {
+                    nextNodes[nextNodesPos++] = Node(false, hashPair);
+                }
+
+                i += 2;
+            }
+            prefix = ~bytes1(0);
+            nodes = nextNodes;
+        }
+
+        if (flagPos == 0 && proofHashesPos == 0 && hashedTransfers.length == 0) {
+            bytes32 root = _computeRoot(hashedLeaves);
+            proofHashes[0] = root;
+            proofHashesPos = 1;
+        }
+
+        bytes32[] memory proofHashesShrunken = new bytes32[](proofHashesPos);
+        bool[] memory flagsShrunken = new bool[](flagPos);
+
+        for (uint256 i = 0; i < proofHashesPos; i++) {
+            proofHashesShrunken[i] = proofHashes[i];
+        }
+
+        for (uint256 i = 0; i < flagPos; i++) {
+            flagsShrunken[i] = flags[i];
+        }
+
+        return (proofHashesShrunken, flagsShrunken);
+    }
+
+    function _logBytes32Array(bytes32[] memory array) internal view {
+        for (uint256 i = 0; i < array.length; i++) {
+            console.logBytes32(array[i]);
+        }
+    }
+
+    function _logBoolArray(bool[] memory array) internal view {
+        for (uint256 i = 0; i < array.length; i++) {
+            console.logBool(array[i]);
+        }
+    }
+
+    function test_checkRoot() public {
+        bytes32 a = bytes32(0x54ab92b1648fc1f4299e531c745504e678ffa751f2e3a073e2f1d3bf0dd41652);
+        bytes32 b = bytes32(0x5bf8f5bfb0a5e73bba2e350a9e712287e4e3b40ce260ac106a8280fd6c18beac);
+        bytes32 c = bytes32(0xc862bf83972bfaa4715054114c4dd7c424d98158fce8d7b25491a2a4b256ddb8);
+
+        bytes32 one = _hashPair(a, b, bytes1(0));
+        bytes32 two = _hashPair(c, bytes32(0), bytes1(0));
+        bytes32 three = _hashPair(one, two, ~bytes1(0));
+
+        bytes32[] memory transfersHashes = new bytes32[](3);
+        transfersHashes[0] = a;
+        transfersHashes[1] = b;
+        transfersHashes[2] = c;
+
+        bytes32 testRoot = _computeRoot(transfersHashes);
+        
+        assertEq(testRoot, three);
     }
 }

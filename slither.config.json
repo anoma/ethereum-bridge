@@ -1,0 +1,11 @@
+{
+  "filter_paths": "(lib/|test/|script/)",
+  "solc_remaps": [
+    "src/=src/",
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/=lib/openzeppelin-contracts/",
+    "foundry-random=lib/foundry-random/src/"
+  ],
+  "detectors_to_run": "reentrancy-eth,reentrancy-no-eth,reentrancy-unlimited-gas,suicidal,encode-packed-collision,protected-vars,uninitialized-storage,erc20-interface"
+}

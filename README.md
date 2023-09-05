@@ -1,66 +1,18 @@
-## Foundry
+# Namada Ethereum Bridge 
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Namada Ethereum bridge is a set of smart contract to enable the exchange of tokens between the namada chain and ERC20 ethereum tokens. The mechanism used is inspired from [Cosmos Gravity Bridge](https://github.com/Gravity-Bridge/Gravity-Bridge).
 
-Foundry consists of:
+# Features
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- [x] Handle multiple ERC20 token transfers
+- [x] Batched transfers
+- [x] Issue native namada token on Ethereum
+- [ ] Audit
 
-## Documentation
+# Smart contracts
 
-https://book.getfoundry.sh/
+The smart contracts used to operate the namada bridge on ethereum are:
+- `Bridge.sol`: is in charge of authorizing tokens transfers to/from Namada.
+- `Proxy.sol`: smart contract is in charge of keeping track of the existing contract addresses and can be queries by other smart contracts.
+- `Vault.sol`: is used to escrow tokens
 
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```

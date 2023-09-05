@@ -14,20 +14,12 @@ solc = "0.8.21"
 src = "src"
 test = "test"
 
-[profile.ci]
-fuzz = {runs = 100}
-verbosity = 4
-
-[profile.hardcore]
-fuzz = {runs = 1000}
-verbosity = 4
-
 [profile.default.optimizer_details]
 constantOptimizer = true
 yul = true
 
 [profile.default.optimizer_details.yulDetails]
-optimizerSteps = 'dhfoDgvulfnTUtnIf'
+optimizerSteps = 'dhfoD[xarrscLMcCTU]uljmul:fDnTOc'
 stackAllocation = true
 
 [etherscan]

@@ -32,7 +32,10 @@ contract Bridge is IBridge, ReentrancyGuard {
     uint256 public withdrawNonce = 0;
     uint256 public upgradeNonce = 0;
 
-    IProxy private proxy;
+    IProxy private immutable proxy;
+
+    bytes1 private constant prefixMin = bytes1(0);
+    bytes1 private constant prefixMax = ~bytes1(0);
 
     constructor(
         uint8 _version,
@@ -57,9 +60,10 @@ contract Bridge is IBridge, ReentrancyGuard {
     // all transfers in the batch must be valid or the whole batch will revert
     function transferToChain(ChainTransfer[] calldata _transfers, uint256 confirmations) external nonReentrant {
         address vaultAddress = proxy.getContract("vault");
-
-        for (uint256 i = 0; i < _transfers.length; ++i) {
+        
+        for (uint256 i = 0; i < _transfers.length;) {
             IERC20(_transfers[i].from).safeTransferFrom(msg.sender, vaultAddress, _transfers[i].amount);
+            unchecked { i++; }
         }
 
         uint256 currentNonce = transferToChainNonce;
@@ -72,7 +76,6 @@ contract Bridge is IBridge, ReentrancyGuard {
     function transferToErc(ValidatorSetArgs calldata validatorSetArgs, Signature[] calldata signatures, RelayProof calldata relayProof) external nonReentrant {
         require(transferToErc20Nonce == relayProof.batchNonce, "Invalid batchNonce.");
         require(_isValidSignatureSet(validatorSetArgs, signatures), "Mismatch array length.");
-
         require(
             _computeValidatorSetHash("bridge", validatorSetArgs) == currentBridgeValidatorSetHash,
             "Invalid currentValidatorSetHash."
@@ -88,14 +91,12 @@ contract Bridge is IBridge, ReentrancyGuard {
 
         bytes32[] memory leaves = new bytes32[](relayProof.transfers.length);
 
-        for (uint256 i = 0; i < relayProof.transfers.length; i++) {
-            bytes32 transferHash = _computeTransferHash(relayProof.transfers[i]);
-            leaves[i] = transferHash;
+        for (uint256 i = 0; i < relayProof.transfers.length;) {
+            leaves[i] = _computeTransferHash(relayProof.transfers[i]);
+            unchecked { i++; }
         }
 
-        bytes32 root = processMultiProofCalldata(relayProof.proof, relayProof.proofFlags, leaves);
-
-        require(relayProof.poolRoot == root, "Invalid transfers proof.");
+        require(_multiProofVerifyCalldata(relayProof.proof, relayProof.proofFlags, relayProof.poolRoot, leaves), "Invalid transfers proof.");
 
         address vaultAddress = proxy.getContract("vault");
         IVault(vaultAddress).batchTransferToErc20(relayProof.transfers);
@@ -176,7 +177,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     }
 
     function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(poolRoot, nonce));
+        return keccak256(abi.encode(poolRoot, nonce));
     }
 
     function _computeTransferHash(Erc20Transfer calldata transfer) internal view returns (bytes32) {
@@ -194,7 +195,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         require(_isValidSignatureSet(_validatorSetArgs, _signatures), "Malformed input.");
         require(
             _computeValidatorSetHash(namespace, _validatorSetArgs) == _validatorSetHash,
-            "Invalid currentValidatorSetHash."
+            "Invalid validatorSetHash."
         );
 
         return _checkValidatorSetVotingPowerAndSignature(_validatorSetArgs, _signatures, _message);
@@ -207,7 +208,7 @@ contract Bridge is IBridge, ReentrancyGuard {
     ) internal pure returns (bool) {
         uint256 powerAccumulator = 0;
 
-        for (uint256 i = 0; i < _validatorSet.validatorSet.length; i++) {
+        for (uint256 i = 0; i < _validatorSet.validatorSet.length;) {
             address addr = _getAddress(_validatorSet.validatorSet[i]);
             if (!_isValidSignature(addr, _messageHash, _signatures[i])) {
                 continue;
@@ -216,6 +217,7 @@ contract Bridge is IBridge, ReentrancyGuard {
             if (powerAccumulator >= thresholdVotingPower) {
                 return true;
             }
+            unchecked { i++; }
         }
         return powerAccumulator >= thresholdVotingPower;
     }
@@ -238,11 +240,12 @@ contract Bridge is IBridge, ReentrancyGuard {
     {
         uint256 powerAccumulator = 0;
 
-        for (uint256 i = 0; i < _validatorSet.length; i++) {
+        for (uint256 i = 0; i < _validatorSet.length;) {
             powerAccumulator = powerAccumulator + _getVotingPower(_validatorSet[i]);
             if (powerAccumulator >= _thresholdVotingPower) {
                 return true;
             }
+            unchecked { i++; }
         }
         return false;
     }
@@ -315,20 +318,20 @@ contract Bridge is IBridge, ReentrancyGuard {
 
     // implementation copied from openzeppeling 
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/MerkleProof.sol#L88
-    function multiProofVerifyCalldata(
+    function _multiProofVerifyCalldata(
         bytes32[] calldata proof,
         bool[] calldata proofFlags,
         bytes32 root,
         bytes32[] memory leaves
     ) internal pure returns (bool) {
-        return processMultiProofCalldata(proof, proofFlags, leaves) == root;
+        return _processMultiProofCalldata(proof, proofFlags, leaves) == root && root != bytes32(0);
     }
 
     // implementation copied from openzeppeling 
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/MerkleProof.sol#L163
     // we changed the hashing function `_hashPair` to include a prefix 
     // this is done to avoid any second pre-image attack
-    function processMultiProofCalldata(
+    function _processMultiProofCalldata(
         bytes32[] calldata proof,
         bool[] calldata proofFlags,
         bytes32[] memory leaves
@@ -336,7 +339,6 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 leavesLen = leaves.length;
         uint256 totalHashes = proofFlags.length;
 
-        // Check proof validity.
         if (leavesLen + proof.length - 1 != totalHashes) {
             revert MerkleProofInvalidMultiproof();
         }
@@ -347,7 +349,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         uint256 proofPos = 0;
 
         for (uint256 i = 0; i < totalHashes; i++) {
-            (bytes32 a, uint8 prefix) = leafPos < leavesLen ? (leaves[leafPos++], type(uint8).min) : (hashes[hashPos++], type(uint8).max);
+            (bytes32 a, bytes1 prefix) = leafPos < leavesLen ? (leaves[leafPos++], prefixMin) : (hashes[hashPos++], prefixMax);
             bytes32 b = proofFlags[i]
                 ? (leafPos < leavesLen ? leaves[leafPos++] : hashes[hashPos++])
                 : proof[proofPos++];
@@ -368,18 +370,8 @@ contract Bridge is IBridge, ReentrancyGuard {
         }
     }
 
-    function _hashPair(bytes32 a, bytes32 b, uint8 prefix) private pure returns (bytes32) {
-        return a < b ? _efficientHash(a, b, prefix) : _efficientHash(b, a, prefix);
-    }
-
-    function _efficientHash(bytes32 a, bytes32 b, uint8 prefix) private pure returns (bytes32 value) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            mstore(0x00, a)
-            mstore(0x20, b)
-            mstore(0x40, prefix)
-            value := keccak256(0x00, 0x41) // 32bytes + 32bytes + 1bytes -> 65bytes -> 0x41 hex
-        }
+    function _hashPair(bytes32 a, bytes32 b, bytes1 prefix) private pure returns (bytes32) {
+        return a < b ? keccak256(abi.encode(a, b, prefix)); : keccak256(abi.encode(b, a, prefix));;
     }
 
     error MerkleProofInvalidMultiproof();
