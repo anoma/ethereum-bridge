@@ -34,12 +34,13 @@ contract Deploy is Script {
 
         Proxy proxy = new Proxy();
         Vault vault = new Vault(proxy);
-        Bridge bridge = new Bridge(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy);
+        Bridge bridge =
+        new Bridge(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy);
 
         vm.stopBroadcast();
     }
 
-    function _encodeValidators(ValidatorData[] memory validators) internal pure returns(bytes32[] memory) {
+    function _encodeValidators(ValidatorData[] memory validators) internal pure returns (bytes32[] memory) {
         bytes32[] memory encodedValidators = new bytes32[](validators.length);
         for (uint256 i = 0; i < validators.length; i++) {
             bytes32 a = bytes20(validators[i].addr);

@@ -22,7 +22,9 @@ contract Vault is IVault, ReentrancyGuard {
             if (_transfers[i].amount > 0) {
                 IERC20(_transfers[i].from).safeTransfer(_transfers[i].to, _transfers[i].amount);
             }
-            unchecked { i++; }
+            unchecked {
+                i++;
+            }
         }
     }
 

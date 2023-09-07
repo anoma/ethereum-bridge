@@ -20,7 +20,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     uint96 MAX_UINT96 = type(uint96).max;
     uint8 MAX_UINT8 = type(uint8).max;
     uint32 MAX_UINT16 = type(uint16).max;
-    uint96 VOTING_POWER_THRESHOLD = 52818775009509558395695966890;
+    uint96 VOTING_POWER_THRESHOLD = 52_818_775_009_509_558_395_695_966_890;
 
     bytes32[] bridgeValidatorSet;
     bytes32[] governanceValidatorSet;
@@ -32,7 +32,8 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         bytes32[] memory _governanceValidatorSet = _createValidatorSet(120, MAX_UINT96);
 
         proxy = new Proxy();
-        bridge = new Bridge(1, _bridgeValidatorSet, _bridgeValidatorSet, _governanceValidatorSet, _governanceValidatorSet, proxy);
+        bridge =
+        new Bridge(1, _bridgeValidatorSet, _bridgeValidatorSet, _governanceValidatorSet, _governanceValidatorSet, proxy);
         vault = new Vault(proxy);
 
         address vaultAddress = address(vault);
@@ -68,7 +69,6 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         token.approve(bridgeAddress, 20 ether);
         vm.stopPrank();
 
-
         bridgeValidatorSet = _bridgeValidatorSet;
         governanceValidatorSet = _governanceValidatorSet;
     }
@@ -82,8 +82,13 @@ contract TestBridge is Test, ICommon, FoundryRandom {
 
         bridge = new Bridge(1, cValidatorSet, nValidatorSet, cValidatorSet, nValidatorSet, proxy);
 
-        assertEq(bridge.currentBridgeValidatorSetHash(), _computeValidatorSetHash(1, "bridge", cValidatorSet, 2 ** 256 - 1));
-        assertEq(bridge.currentGovernanceValidatorSetHash(), _computeValidatorSetHash(1, "governance", cValidatorSet, 2 ** 256 - 1));
+        assertEq(
+            bridge.currentBridgeValidatorSetHash(), _computeValidatorSetHash(1, "bridge", cValidatorSet, 2 ** 256 - 1)
+        );
+        assertEq(
+            bridge.currentGovernanceValidatorSetHash(),
+            _computeValidatorSetHash(1, "governance", cValidatorSet, 2 ** 256 - 1)
+        );
 
         assertEq(bridge.nextBridgeValidatorSetHash(), _computeValidatorSetHash(1, "bridge", nValidatorSet, 0));
         assertEq(bridge.nextGovernanceValidatorSetHash(), _computeValidatorSetHash(1, "governance", nValidatorSet, 0));
@@ -117,33 +122,24 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         bytes32 nextBridgeValidatorSet = _computeValidatorSetHash(1, "bridge", cValidatorSet, 1);
         bytes32 nextGovernanceValidatorSet = _computeValidatorSetHash(1, "governance", nValidatorSet, 1);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "updateValidatorSet", nextBridgeValidatorSet, nextGovernanceValidatorSet, 1)
-        );
+        bytes32 message =
+            keccak256(abi.encode(1, "updateValidatorSet", nextBridgeValidatorSet, nextGovernanceValidatorSet, 1));
 
         Signature[] memory signatures = new Signature[](bridgeValidatorSet.length);
         for (uint256 i = 0; i < bridgeValidatorSet.length; i++) {
             signatures[i] = _signMessage(i, message);
         }
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 1);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 1);
 
         vm.expectRevert("Invalid validatorSetHash.");
-        bridge.updateValidatorSet(
-            validatorSetArgs,
-            nextBridgeValidatorSet,
-            nextGovernanceValidatorSet,
-            signatures
-        );
+        bridge.updateValidatorSet(validatorSetArgs, nextBridgeValidatorSet, nextGovernanceValidatorSet, signatures);
 
         Signature[] memory wrongNumberOfSignatures = new Signature[](bridgeValidatorSet.length - 1);
 
         vm.expectRevert("Malformed input.");
         bridge.updateValidatorSet(
-            validatorSetArgs,
-            nextBridgeValidatorSet,
-            nextGovernanceValidatorSet,
-            wrongNumberOfSignatures
+            validatorSetArgs, nextBridgeValidatorSet, nextGovernanceValidatorSet, wrongNumberOfSignatures
         );
 
         assertEq(bridge.validatorSetNonce(), 0);
@@ -159,9 +155,8 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         bytes32 nextBridgeValidatorSet = _computeValidatorSetHash(1, "bridge", cValidatorSet, 1);
         bytes32 nextGovernanceValidatorSet = _computeValidatorSetHash(1, "governance", nValidatorSet, 1);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "updateValidatorSet", nextBridgeValidatorSet, nextGovernanceValidatorSet, 1)
-        );
+        bytes32 message =
+            keccak256(abi.encode(1, "updateValidatorSet", nextBridgeValidatorSet, nextGovernanceValidatorSet, 1));
 
         Signature[] memory signatures = new Signature[](bridgeValidatorSet.length);
         for (uint256 i = 0; i < bridgeValidatorSet.length; i++) {
@@ -169,15 +164,10 @@ contract TestBridge is Test, ICommon, FoundryRandom {
             signatures[i].r = signatures[i].s;
         }
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 0);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 0);
 
         vm.expectRevert("Unauthorized.");
-        bridge.updateValidatorSet(
-            validatorSetArgs,
-            nextBridgeValidatorSet,
-            nextGovernanceValidatorSet,
-            signatures
-        );
+        bridge.updateValidatorSet(validatorSetArgs, nextBridgeValidatorSet, nextGovernanceValidatorSet, signatures);
 
         assertEq(bridge.validatorSetNonce(), 0);
     }
@@ -195,23 +185,17 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         bytes32 nextBridgeValidatorSet = _computeValidatorSetHash(1, "bridge", cValidatorSet, 1);
         bytes32 nextGovernanceValidatorSet = _computeValidatorSetHash(1, "governance", nValidatorSet, 1);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "updateValidatorSet", nextBridgeValidatorSet, nextGovernanceValidatorSet, 1)
-        );
+        bytes32 message =
+            keccak256(abi.encode(1, "updateValidatorSet", nextBridgeValidatorSet, nextGovernanceValidatorSet, 1));
 
         Signature[] memory signatures = new Signature[](bridgeValidatorSet.length);
         for (uint256 i = 0; i < bridgeValidatorSet.length; i++) {
             signatures[i] = _signMessage(i, message);
         }
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 0);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 0);
 
-        bridge.updateValidatorSet(
-            validatorSetArgs,
-            nextBridgeValidatorSet,
-            nextGovernanceValidatorSet,
-            signatures
-        );
+        bridge.updateValidatorSet(validatorSetArgs, nextBridgeValidatorSet, nextGovernanceValidatorSet, signatures);
 
         assertEq(bridge.currentBridgeValidatorSetHash(), bridgeCheckSetHash);
         assertEq(bridge.currentGovernanceValidatorSetHash(), governaneCheckSetHash);
@@ -221,27 +205,20 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     function test_withdrawValid() public {
         uint256 amount = token.balanceOf(address(vault));
         address to = vm.addr(100);
-        
+
         Erc20Transfer[] memory transfers = new Erc20Transfer[](1);
         transfers[0] = Erc20Transfer(bytes32(0), amount, address(token), to);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "withdraw", governanceValidatorSet, transfers, 1)
-        );
+        bytes32 message = keccak256(abi.encode(1, "withdraw", governanceValidatorSet, transfers, 1));
 
         Signature[] memory signatures = new Signature[](governanceValidatorSet.length);
         for (uint256 i = 0; i < governanceValidatorSet.length; i++) {
             signatures[i] = _signMessage(i, message);
         }
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);
 
-        bridge.withdraw(
-            validatorSetArgs,
-            transfers,
-            signatures,
-            1
-        );
+        bridge.withdraw(validatorSetArgs, transfers, signatures, 1);
 
         assertEq(token.balanceOf(address(vault)), 0);
     }
@@ -249,98 +226,67 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     function test_withdrawInvalidPreconditions() public {
         uint256 amount = token.balanceOf(address(vault));
         address to = vm.addr(100);
-        
+
         Erc20Transfer[] memory transfers = new Erc20Transfer[](1);
         transfers[0] = Erc20Transfer(bytes32(0), amount, address(token), to);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "withdraw", governanceValidatorSet, transfers, 1)
-        );
+        bytes32 message = keccak256(abi.encode(1, "withdraw", governanceValidatorSet, transfers, 1));
 
         Signature[] memory signatures = new Signature[](governanceValidatorSet.length - 1);
         for (uint256 i = 0; i < governanceValidatorSet.length - 1; i++) {
             signatures[i] = _signMessage(i, message);
         }
-        
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);        
+
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);
 
         vm.expectRevert("Invalid nonce.");
-        bridge.withdraw(
-            validatorSetArgs,
-            transfers,
-            signatures,
-            3
-        );
+        bridge.withdraw(validatorSetArgs, transfers, signatures, 3);
 
         vm.expectRevert("Malformed input.");
-        bridge.withdraw(
-            validatorSetArgs,
-            transfers,
-            signatures,
-            1
-        );
+        bridge.withdraw(validatorSetArgs, transfers, signatures, 1);
         assertEq(token.balanceOf(address(vault)), amount);
     }
 
     function test_withdrawInvalidValidatorSet() public {
         uint256 amount = token.balanceOf(address(vault));
         address to = vm.addr(100);
-        
+
         Erc20Transfer[] memory transfers = new Erc20Transfer[](1);
         transfers[0] = Erc20Transfer(bytes32(0), amount, address(token), to);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "withdraw", governanceValidatorSet, transfers, 1)
-        );
+        bytes32 message = keccak256(abi.encode(1, "withdraw", governanceValidatorSet, transfers, 1));
 
         Signature[] memory signatures = new Signature[](governanceValidatorSet.length);
         for (uint256 i = 0; i < governanceValidatorSet.length; i++) {
             signatures[i] = _signMessage(i, message);
             signatures[i].r = signatures[i].s;
         }
-        
-        ValidatorSetArgs memory invalidValidatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 1);        
+
+        ValidatorSetArgs memory invalidValidatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 1);
 
         vm.expectRevert("Invalid validatorSetHash.");
-        bridge.withdraw(
-            invalidValidatorSetArgs,
-            transfers,
-            signatures,
-            1
-        );
+        bridge.withdraw(invalidValidatorSetArgs, transfers, signatures, 1);
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);
 
         vm.expectRevert("Unauthorized.");
-        bridge.withdraw(
-            validatorSetArgs,
-            transfers,
-            signatures,
-            1
-        );
+        bridge.withdraw(validatorSetArgs, transfers, signatures, 1);
         assertEq(token.balanceOf(address(vault)), amount);
     }
 
     function test_upgrade() public {
         address to = vm.addr(100);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "upgrade", governanceValidatorSet, to, 1)
-        );
+        bytes32 message = keccak256(abi.encode(1, "upgrade", governanceValidatorSet, to, 1));
 
         Signature[] memory signatures = new Signature[](governanceValidatorSet.length);
         for (uint256 i = 0; i < governanceValidatorSet.length; i++) {
             signatures[i] = _signMessage(i, message);
         }
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);
 
-        bridge.upgrade(
-            validatorSetArgs,
-            signatures,
-            to,
-            1
-        );
+        bridge.upgrade(validatorSetArgs, signatures, to, 1);
 
         assertEq(proxy.getContract("bridge"), to);
     }
@@ -348,67 +294,43 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     function test_upgradeInvalidPreconditions() public {
         address to = vm.addr(100);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "upgrade", governanceValidatorSet, to, 1)
-        );
+        bytes32 message = keccak256(abi.encode(1, "upgrade", governanceValidatorSet, to, 1));
 
         Signature[] memory signatures = new Signature[](governanceValidatorSet.length - 1);
         for (uint256 i = 0; i < governanceValidatorSet.length - 1; i++) {
             signatures[i] = _signMessage(i, message);
         }
-        
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);        
+
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);
 
         vm.expectRevert("Invalid nonce.");
-        bridge.upgrade(
-            validatorSetArgs,
-            signatures,
-            to,
-            3
-        );
+        bridge.upgrade(validatorSetArgs, signatures, to, 3);
 
         vm.expectRevert("Malformed input.");
-        bridge.upgrade(
-            validatorSetArgs,
-            signatures,
-            to,
-            1
-        );
+        bridge.upgrade(validatorSetArgs, signatures, to, 1);
         assertEq(proxy.getContract("bridge"), address(bridge));
     }
 
     function test_upgradeInvalidValidatorSet() public {
         address to = vm.addr(100);
 
-        bytes32 message = keccak256(
-            abi.encode(1, "upgrade", governanceValidatorSet, to, 1)
-        );
+        bytes32 message = keccak256(abi.encode(1, "upgrade", governanceValidatorSet, to, 1));
 
         Signature[] memory signatures = new Signature[](governanceValidatorSet.length);
         for (uint256 i = 0; i < governanceValidatorSet.length; i++) {
             signatures[i] = _signMessage(i, message);
             signatures[i].r = signatures[i].s;
         }
-        
-        ValidatorSetArgs memory invalidValidatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 1);        
+
+        ValidatorSetArgs memory invalidValidatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 1);
 
         vm.expectRevert("Invalid validatorSetHash.");
-        bridge.upgrade(
-            invalidValidatorSetArgs,
-            signatures,
-            to,
-            1
-        );
+        bridge.upgrade(invalidValidatorSetArgs, signatures, to, 1);
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);        
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(governanceValidatorSet, 2 ** 256 - 1);
 
         vm.expectRevert("Unauthorized.");
-        bridge.upgrade(
-            validatorSetArgs,
-            signatures,
-            to,
-            1
-        );
+        bridge.upgrade(validatorSetArgs, signatures, to, 1);
         assertEq(proxy.getContract("bridge"), address(bridge));
     }
 
@@ -468,26 +390,30 @@ contract TestBridge is Test, ICommon, FoundryRandom {
 
         uint256 vaultPreBalance = token.balanceOf(address(vault));
 
-        (Erc20Transfer[] memory transfers, Erc20Transfer[] memory transfersToProve, uint256 toProveSum) = _createTransfers(total, toProve);
-        (bytes32[] memory sortedTransferHashes, ) = _computeSortedTransferHashes(transfers);
-        (bytes32[] memory hashedTransfersToProve, uint256[] memory indexes) = _computeSortedTransferHashes(transfersToProve);
+        (Erc20Transfer[] memory transfers, Erc20Transfer[] memory transfersToProve, uint256 toProveSum) =
+            _createTransfers(total, toProve);
+        (bytes32[] memory sortedTransferHashes,) = _computeSortedTransferHashes(transfers);
+        (bytes32[] memory hashedTransfersToProve, uint256[] memory indexes) =
+            _computeSortedTransferHashes(transfersToProve);
 
         Erc20Transfer[] memory transfersToProveSorted = _sortTransfersWithIndexes(transfers, indexes);
 
         bytes32 bridgePoolRoot = _computeRoot(sortedTransferHashes);
 
-        (bytes32[] memory proofs, bool[] memory flags) = _computeTransfersProof(sortedTransferHashes, hashedTransfersToProve);
+        (bytes32[] memory proofs, bool[] memory flags) =
+            _computeTransfersProof(sortedTransferHashes, hashedTransfersToProve);
 
         bytes32 message = _computeTransferToErcMessage(bridgePoolRoot, 0);
 
         Signature[] memory signatures = _computeSignatures(bridgeValidatorSet.length, message);
 
-        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 2 ** 256 - 1);   
+        ValidatorSetArgs memory validatorSetArgs = _makeValidatorSetArgs(bridgeValidatorSet, 2 ** 256 - 1);
 
-        RelayProof memory relayProof = RelayProof(transfersToProveSorted, bridgePoolRoot, proofs, flags, 0, "anamadaaddress");
+        RelayProof memory relayProof =
+            RelayProof(transfersToProveSorted, bridgePoolRoot, proofs, flags, 0, "anamadaaddress");
 
         bridge.transferToErc(validatorSetArgs, signatures, relayProof);
-        
+
         assertEq(vaultPreBalance - token.balanceOf(address(vault)), toProveSum);
         assertEq(bridge.transferToErc20Nonce(), 1);
 
@@ -503,10 +429,10 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         bytes32 b = bytes12(vp);
 
         bytes32 encodedValidator = (b >> 160) | a;
-        
+
         uint96 decodedVotingPower = _getVotingPowerFromEncodedValidator(encodedValidator);
         address decodedAddress = _getAddressFromEncodedValidator(encodedValidator);
-        
+
         assertEq(decodedVotingPower, vp);
         assertEq(decodedAddress, addr);
     }
@@ -526,13 +452,13 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         transfersHashes[2] = c;
 
         bytes32 testRoot = _computeRoot(transfersHashes);
-        
+
         assertEq(testRoot, three);
     }
 
     // same as bridge._getVotingPower(bytes32)
     // its internal so we can't call it from here
-    function _getVotingPowerFromEncodedValidator(bytes32 validator) internal pure returns(uint96) {
+    function _getVotingPowerFromEncodedValidator(bytes32 validator) internal pure returns (uint96) {
         bytes12 x;
         assembly {
             x := shl(160, validator)
@@ -542,14 +468,11 @@ contract TestBridge is Test, ICommon, FoundryRandom {
 
     // same as bridge._getAddress(bytes32)
     // its internal so we can't call it from here
-    function _getAddressFromEncodedValidator(bytes32 validator) internal pure returns(address) {
+    function _getAddressFromEncodedValidator(bytes32 validator) internal pure returns (address) {
         return address(bytes20(validator));
     }
 
-    function _createValidatorSet(
-        uint256 total,
-        uint96 maxVotingPower
-    ) internal returns (bytes32[] memory) {
+    function _createValidatorSet(uint256 total, uint96 maxVotingPower) internal returns (bytes32[] memory) {
         uint96[] memory votingPowers = new uint96[](total);
 
         uint96 totalVotingPower = 0;
@@ -564,9 +487,13 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         uint256 sumNormalizedVotingPower = 0;
         bytes32[] memory validatorSet = new bytes32[](total);
 
-        for (uint256 i = 0; i < total; i++) {     
+        for (uint256 i = 0; i < total; i++) {
             validatorSet[i] = _createValidatorFromVotingPower(i, normalizedVotingPowers[i]);
-            assertEq(_getVotingPowerFromEncodedValidator(validatorSet[i]), normalizedVotingPowers[i], "Mismatched encoded voting power.");
+            assertEq(
+                _getVotingPowerFromEncodedValidator(validatorSet[i]),
+                normalizedVotingPowers[i],
+                "Mismatched encoded voting power."
+            );
             assertEq(_getAddressFromEncodedValidator(validatorSet[i]), vm.addr(i + 1), "Mismatched encoded address.");
             sumNormalizedVotingPower += normalizedVotingPowers[i];
         }
@@ -592,7 +519,11 @@ contract TestBridge is Test, ICommon, FoundryRandom {
     function _makeValidatorSetArgs(
         bytes32[] memory validatorSet,
         uint256 nonce
-    ) internal pure returns (ValidatorSetArgs memory) {
+    )
+        internal
+        pure
+        returns (ValidatorSetArgs memory)
+    {
         return ValidatorSetArgs(validatorSet, nonce);
     }
 
@@ -601,7 +532,11 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         string memory namespace,
         bytes32[] memory validatorSet,
         uint256 nonce
-    ) internal pure returns (bytes32) {
+    )
+        internal
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encode(version, namespace, validatorSet, nonce));
     }
 
@@ -609,7 +544,11 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         uint96[] memory votingPowers,
         uint96 maxVotingPower,
         uint96 totalVotingPower
-    ) internal pure returns(uint96[] memory) {
+    )
+        internal
+        pure
+        returns (uint96[] memory)
+    {
         uint96[] memory normalizedVotingPowers = new uint96[](votingPowers.length);
         uint256 debug = 0;
 
@@ -622,23 +561,35 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         return normalizedVotingPowers;
     }
 
-    function _computeTransferToErcMessage(bytes32 bridgePoolRoot, uint256 nonce) internal pure returns(bytes32) {
+    function _computeTransferToErcMessage(bytes32 bridgePoolRoot, uint256 nonce) internal pure returns (bytes32) {
         return keccak256(abi.encode(bridgePoolRoot, nonce));
     }
 
-    function _computeTransferHash(Erc20Transfer memory transfer) internal pure returns(bytes32) {
+    function _computeTransferHash(Erc20Transfer memory transfer) internal pure returns (bytes32) {
         return keccak256(abi.encode(1, "transfer", transfer.from, transfer.to, transfer.amount, transfer.dataDigest));
     }
 
-    function _sortTransfersWithIndexes(Erc20Transfer[] memory transfers, uint256[] memory indexes) internal pure returns(Erc20Transfer[] memory) {
+    function _sortTransfersWithIndexes(
+        Erc20Transfer[] memory transfers,
+        uint256[] memory indexes
+    )
+        internal
+        pure
+        returns (Erc20Transfer[] memory)
+    {
         Erc20Transfer[] memory sortedTransfers = new Erc20Transfer[](indexes.length);
         for (uint256 i = 0; i < indexes.length; i++) {
-            sortedTransfers[i] = Erc20Transfer(transfers[indexes[i]].dataDigest, transfers[indexes[i]].amount, transfers[indexes[i]].from, transfers[indexes[i]].to);
+            sortedTransfers[i] = Erc20Transfer(
+                transfers[indexes[i]].dataDigest,
+                transfers[indexes[i]].amount,
+                transfers[indexes[i]].from,
+                transfers[indexes[i]].to
+            );
         }
         return sortedTransfers;
     }
 
-    function _computeSignatures(uint256 totalSignatures, bytes32 message) internal pure returns(Signature[] memory) {
+    function _computeSignatures(uint256 totalSignatures, bytes32 message) internal pure returns (Signature[] memory) {
         Signature[] memory signatures = new Signature[](totalSignatures);
         for (uint256 i = 0; i < totalSignatures; i++) {
             signatures[i] = _signMessage(i, message);
@@ -646,25 +597,35 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         return signatures;
     }
 
-    function _createTransfers(uint256 total, uint256 toProve) internal returns(Erc20Transfer[] memory, Erc20Transfer[] memory, uint256 amount) {
+    function _createTransfers(
+        uint256 total,
+        uint256 toProve
+    )
+        internal
+        returns (Erc20Transfer[] memory, Erc20Transfer[] memory, uint256 amount)
+    {
         Erc20Transfer[] memory transfers = new Erc20Transfer[](total);
         Erc20Transfer[] memory transferToProve = new Erc20Transfer[](toProve);
 
         uint256 toProveAmountSum = 0;
         for (uint256 i = 0; i < transfers.length; i++) {
             uint256 transferAmount = randomNumber(1000);
-            Erc20Transfer memory transfer = Erc20Transfer(randomBytes32(), transferAmount, address(token), vm.addr(i + 10000));
+            Erc20Transfer memory transfer =
+                Erc20Transfer(randomBytes32(), transferAmount, address(token), vm.addr(i + 10_000));
             if (i < toProve) {
                 transferToProve[i] = transfer;
                 toProveAmountSum += transferAmount;
             }
             transfers[i] = transfer;
-            
         }
         return (transfers, transferToProve, toProveAmountSum);
     }
-    
-    function _computeSortedTransferHashes(Erc20Transfer[] memory transfers) internal pure returns (bytes32[] memory, uint256[] memory) {
+
+    function _computeSortedTransferHashes(Erc20Transfer[] memory transfers)
+        internal
+        pure
+        returns (bytes32[] memory, uint256[] memory)
+    {
         bytes32[] memory hashes = new bytes32[](transfers.length);
         for (uint256 i = 0; i < transfers.length; i++) {
             hashes[i] = _computeTransferHash(transfers[i]);
@@ -674,7 +635,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         return (sortedHashedTransfers, indexes);
     }
 
-    function _sort(bytes32[] memory array) internal pure returns(bytes32[] memory, uint256[] memory) {
+    function _sort(bytes32[] memory array) internal pure returns (bytes32[] memory, uint256[] memory) {
         uint256[] memory indexes = new uint256[](array.length);
         for (uint256 k = 0; k < indexes.length; k++) {
             indexes[k] = k;
@@ -682,7 +643,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
 
         uint256 i = 1;
 
-        while(i < array.length) {
+        while (i < array.length) {
             uint256 j = i;
             while (j > 0 && array[j - 1] > array[j]) {
                 bytes32 tmp = array[j];
@@ -705,18 +666,18 @@ contract TestBridge is Test, ICommon, FoundryRandom {
 
         while (hashedLeaves.length > 1) {
             bytes32[] memory nextHashes = new bytes32[](Math.ceilDiv(hashedLeaves.length, 2));
-            
+
             uint256 i = 0;
             uint256 j = 0;
 
             while (i < hashedLeaves.length) {
                 bytes32 left = hashedLeaves[i];
                 bytes32 right = bytes32(0);
-                
+
                 if (i + 1 < hashedLeaves.length) {
                     right = hashedLeaves[i + 1];
                 }
-                
+
                 nextHashes[j] = _hashPair(left, right, prefix);
                 i += 2;
                 j += 1;
@@ -742,7 +703,14 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         bytes32 nodeHash;
     }
 
-    function _computeTransfersProof(bytes32[] memory hashedLeaves, bytes32[] memory hashedTransfers) internal pure returns (bytes32[] memory, bool[] memory) {
+    function _computeTransfersProof(
+        bytes32[] memory hashedLeaves,
+        bytes32[] memory hashedTransfers
+    )
+        internal
+        pure
+        returns (bytes32[] memory, bool[] memory)
+    {
         Node[] memory nodes = new Node[](hashedLeaves.length);
         for (uint256 i = 0; i < hashedLeaves.length; i++) {
             bool found = false;
@@ -775,7 +743,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
             while (i < nodes.length) {
                 Node memory left = nodes[i];
                 Node memory right = Node(false, bytes32(0));
-                
+
                 if (i + 1 < nodes.length) {
                     right = nodes[i + 1];
                 }

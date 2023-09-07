@@ -14,26 +14,34 @@ interface IBridge is ICommon {
 
     function transferToChain(ChainTransfer[] calldata transfers, uint256 confirmations) external;
 
-    function transferToErc(ValidatorSetArgs calldata validatorSetArgs, Signature[] calldata signatures, RelayProof calldata relayProof) external;
+    function transferToErc(
+        ValidatorSetArgs calldata validatorSetArgs,
+        Signature[] calldata signatures,
+        RelayProof calldata relayProof
+    )
+        external;
 
     function updateValidatorSet(
         ValidatorSetArgs calldata currentValidatorSetArgs,
         bytes32 bridgeValidatorSetHash,
         bytes32 governanceValidatorSetHash,
         Signature[] calldata signatures
-    ) external;
+    )
+        external;
 
     function withdraw(
         ValidatorSetArgs calldata currentValidatorSetArgs,
         Erc20Transfer[] calldata transfers,
         Signature[] calldata signatures,
         uint256 nonce
-    ) external;
+    )
+        external;
 
     function upgrade(
         ValidatorSetArgs calldata currentValidatorSetArgs,
         Signature[] calldata signatures,
         address to,
         uint256 nonce
-    ) external;
+    )
+        external;
 }
