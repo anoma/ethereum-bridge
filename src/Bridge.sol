@@ -246,6 +246,9 @@ contract Bridge is IBridge, ReentrancyGuard {
         for (uint256 i = 0; i < _validatorSet.validatorSet.length;) {
             address addr = _getAddress(_validatorSet.validatorSet[i]);
             if (!_isValidSignature(addr, _messageHash, _signatures[i])) {
+                unchecked {
+                    i++;
+                }
                 continue;
             }
             powerAccumulator = powerAccumulator + _getVotingPower(_validatorSet.validatorSet[i]);
