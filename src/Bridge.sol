@@ -204,8 +204,22 @@ contract Bridge is IBridge, ReentrancyGuard {
         upgradeNonce = _nonce;
     }
 
-    function _computeTransferPoolRootHash(bytes32 poolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return keccak256(abi.encode(poolRoot, nonce));
+    function _computeTransferPoolRootHash(
+        bytes32 poolRoot,
+        uint256 nonce
+    )
+        internal
+        pure
+        returns (bytes32 signableHash)
+    {
+        assembly ("memory-safe") {
+            let scratch := mload(0x40)
+
+            mstore(scratch, poolRoot)
+            mstore(add(scratch, 0x20), nonce)
+
+            signableHash := keccak256(scratch, 64)
+        }
     }
 
     function _computeTransferHash(Erc20Transfer calldata transfer) internal view returns (bytes32) {

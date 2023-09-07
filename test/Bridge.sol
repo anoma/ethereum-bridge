@@ -561,8 +561,22 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         return normalizedVotingPowers;
     }
 
-    function _computeTransferToErcMessage(bytes32 bridgePoolRoot, uint256 nonce) internal pure returns (bytes32) {
-        return keccak256(abi.encode(bridgePoolRoot, nonce));
+    function _computeTransferToErcMessage(
+        bytes32 poolRoot,
+        uint256 nonce
+    )
+        internal
+        pure
+        returns (bytes32 signableHash)
+    {
+        assembly ("memory-safe") {
+            let scratch := mload(0x40)
+
+            mstore(scratch, poolRoot)
+            mstore(add(scratch, 0x20), nonce)
+
+            signableHash := keccak256(scratch, 64)
+        }
     }
 
     function _computeTransferHash(Erc20Transfer memory transfer) internal pure returns (bytes32) {
