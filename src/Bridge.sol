@@ -463,8 +463,24 @@ contract Bridge is IBridge, ReentrancyGuard {
         }
     }
 
-    function _hashPair(bytes32 a, bytes32 b, bytes1 prefix) private pure returns (bytes32) {
-        return a < b ? keccak256(abi.encode(a, b, prefix)) : keccak256(abi.encode(b, a, prefix));
+    function _hashPair(bytes32 a, bytes32 b, bytes1 prefix) private pure returns (bytes32 outputHash) {
+        assembly ("memory-safe") {
+            let scratch := mload(0x40)
+
+            mstore(scratch, prefix)
+
+            switch lt(a, b)
+            case 1 {
+                mstore(add(scratch, 0x01), a)
+                mstore(add(scratch, 0x21), b)
+            }
+            case 0 {
+                mstore(add(scratch, 0x01), b)
+                mstore(add(scratch, 0x21), a)
+            }
+
+            outputHash := keccak256(scratch, 65)
+        }
     }
 
     error MerkleProofInvalidMultiproof();
