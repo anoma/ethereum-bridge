@@ -712,7 +712,7 @@ contract TestBridge is Test, ICommon, FoundryRandom {
         assembly ("memory-safe") {
             let scratch := mload(0x40)
 
-            mstore(scratch, prefix)
+            mstore8(scratch, prefix)
 
             switch lt(a, b)
             case 1 {

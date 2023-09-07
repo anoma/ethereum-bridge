@@ -467,7 +467,7 @@ contract Bridge is IBridge, ReentrancyGuard {
         assembly ("memory-safe") {
             let scratch := mload(0x40)
 
-            mstore(scratch, prefix)
+            mstore8(scratch, prefix)
 
             switch lt(a, b)
             case 1 {
