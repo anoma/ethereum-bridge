@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "forge-std/console.sol";
 import "forge-std/Script.sol";
 import "../src/Bridge.sol";
 import "../src/Proxy.sol";
 import "../src/Vault.sol";
+import "../src/TestERC20.sol";
 
 struct ValidatorData {
     address addr;
@@ -36,6 +38,15 @@ contract Deploy is Script {
         Vault vault = new Vault(proxy);
         Bridge bridge =
         new Bridge(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy);
+
+        console.log("Proxy     | %s", address(proxy));
+        console.log("Vault     | %s", address(vault));
+        console.log("Bridge    | %s", address(bridge));
+
+        if (block.chainid == 31_337) {
+            TestERC20 testErc20 = new TestERC20();
+            console.log("TestERC20 | %s", address(testErc20));
+        }
 
         vm.stopBroadcast();
     }
