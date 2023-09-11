@@ -285,7 +285,15 @@ contract Bridge is IBridge, ReentrancyGuard {
         pure
         returns (bool)
     {
-        bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
+        bytes32 messageDigest;
+        assembly ("memory-safe") {
+            let scratch := mload(0x40)
+
+            mstore(scratch, "\x19Ethereum Signed Message:\n32\x00\x00\x00\x00")
+            mstore(add(scratch, 28), _messageHash)
+
+            messageDigest := keccak256(scratch, 60)
+        }
         (address signer, ECDSA.RecoverError error) =
             ECDSA.tryRecover(messageDigest, _signature.v, _signature.r, _signature.s);
         return error == ECDSA.RecoverError.NoError && _signer == signer;
