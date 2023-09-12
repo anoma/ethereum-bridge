@@ -21,6 +21,9 @@ contract Deploy is Script {
         string memory bridgeValidatorSetJson = vm.readFile(vm.envString("BRIDGE_VALSET_JSON"));
         string memory governanceValiatorSetJson = vm.readFile(vm.envString("GOVERNANCE_VALSET_JSON"));
 
+        string memory nativeTokenName = vm.envString("NATIVE_TOKEN_NAME");
+        string memory nativeTokenSymbol = vm.envString("NATIVE_TOKEN_SYMBOL");
+
         bytes memory bridgeData = vm.parseJson(bridgeValidatorSetJson, ".set");
         ValidatorData[] memory bridgeValidator = abi.decode(bridgeData, (ValidatorData[]));
 
@@ -37,7 +40,7 @@ contract Deploy is Script {
 
         Proxy proxy = new Proxy();
         Vault vault = new Vault(proxy);
-        Token nativeToken = new Token(address(vault), "Wrapped NAM", "wNAM");
+        Token nativeToken = new Token(address(vault), nativeTokenName, nativeTokenSymbol);
         Bridge bridge =
         new Bridge(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy);
 
