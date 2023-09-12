@@ -13,7 +13,18 @@ script = "script"
 solc = "0.8.21"
 src = "src"
 test = "test"
-fs_permissions = [{ access = "read-write", path = "./script"}]
+
+[[profile.default.fs_permissions]]
+access = "read-write"
+path = "./script"
+
+[[profile.default.fs_permissions]]
+access = "read"
+path = "validator-set.json"
+
+[[profile.default.fs_permissions]]
+access = "read"
+path = "/tmp/validator-set.json"
 
 [profile.default.optimizer_details]
 constantOptimizer = true
