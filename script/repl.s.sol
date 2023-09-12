@@ -1,1 +1,1 @@
-import "src/interfaces/IBridge.sol"
+import "script/repl.in.sol"
