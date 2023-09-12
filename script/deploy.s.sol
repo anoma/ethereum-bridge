@@ -7,6 +7,7 @@ import "../src/Bridge.sol";
 import "../src/Proxy.sol";
 import "../src/Vault.sol";
 import "../src/TestERC20.sol";
+import "../src/Token.sol";
 
 struct ValidatorData {
     address addr;
@@ -36,11 +37,13 @@ contract Deploy is Script {
 
         Proxy proxy = new Proxy();
         Vault vault = new Vault(proxy);
+        Token nativeToken = new Token(address(vault), "Wrapped NAM", "wNAM");
         Bridge bridge =
         new Bridge(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy);
 
         console.log("Proxy     | %s", address(proxy));
         console.log("Vault     | %s", address(vault));
+        console.log("Token     | %s", address(nativeToken));
         console.log("Bridge    | %s", address(bridge));
 
         if (block.chainid == 31_337) {
