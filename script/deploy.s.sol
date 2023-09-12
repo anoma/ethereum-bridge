@@ -48,6 +48,7 @@ contract Deploy is Script {
 
         if (block.chainid == 31_337) {
             TestERC20 testErc20 = new TestERC20();
+            testErc20.mint(msg.sender, 10_000);
             console.log("TestERC20 | %s", address(testErc20));
         }
 
