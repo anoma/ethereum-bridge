@@ -1,6 +1,9 @@
+DEFAULT-SIGNER := "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+
 default:
     # drop into a chisel shell by default
-    chisel
+    chisel \
+        --tx-origin {{DEFAULT-SIGNER}}
 
 anvil:
     # start anvil producing blocks every 10s
@@ -14,4 +17,4 @@ anvil-deploy BRIDGE_VALSET_JSON GOVERNANCE_VALSET_JSON:
             --fork-url http://localhost:8545 \
             --broadcast \
             --via-ir \
-            --sender 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+            --sender {{DEFAULT-SIGNER}}
