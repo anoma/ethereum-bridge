@@ -18,8 +18,8 @@ contract Deploy is Script {
     function run() external {
         vm.startBroadcast();
 
-        string memory bridgeValidatorSetJson = vm.readFile("script/bridge_validator_set.json");
-        string memory governanceValiatorSetJson = vm.readFile("script/governance_validator_set.json");
+        string memory bridgeValidatorSetJson = vm.readFile(vm.envString("BRIDGE_VALSET_JSON"));
+        string memory governanceValiatorSetJson = vm.readFile(vm.envString("GOVERNANCE_VALSET_JSON"));
 
         bytes memory bridgeData = vm.parseJson(bridgeValidatorSetJson, ".set");
         ValidatorData[] memory bridgeValidator = abi.decode(bridgeData, (ValidatorData[]));
