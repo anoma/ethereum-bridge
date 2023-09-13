@@ -19,11 +19,6 @@ interface ICommon {
         string to;
     }
 
-    enum Erc20TransferKind {
-        ERC20,
-        NUT
-    }
-
     struct Erc20Transfer {
         bytes32 dataDigest;
         uint256 amount;
