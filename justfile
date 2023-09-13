@@ -24,3 +24,24 @@ anvil-deploy BRIDGE_VALSET_JSON GOVERNANCE_VALSET_JSON NATIVE_TOKEN_NAME="Wrappe
             --broadcast \
             --via-ir \
             --sender {{DEFAULT-SIGNER}}
+
+anvil-transfer TRANSFER_TARGET TRANSFER_AMOUNT="1000":
+    @\
+    TRANSFER_TARGET="{{TRANSFER_TARGET}}" \
+    TRANSFER_AMOUNT="{{TRANSFER_AMOUNT}}" \
+    MNEMONIC="test test test test test test test test test test test junk" \
+        forge script script/transfer_erc20.s.sol:TransferErc20 \
+            --fork-url http://localhost:8545 \
+            --broadcast \
+            --via-ir \
+            --sender {{DEFAULT-SIGNER}}
+
+anvil-allow TRANSFER_AMOUNT="1000":
+    @\
+    TRANSFER_AMOUNT="{{TRANSFER_AMOUNT}}" \
+    MNEMONIC="test test test test test test test test test test test junk" \
+        forge script script/allowance_erc20.s.sol:AllowanceErc20 \
+            --fork-url http://localhost:8545 \
+            --broadcast \
+            --via-ir \
+            --sender {{DEFAULT-SIGNER}}

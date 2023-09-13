@@ -1,3 +1,5 @@
+import "src/interfaces/ICommon.sol";
+
 import "src/Bridge.sol";
 import "src/Proxy.sol";
 import "src/TestERC20.sol";
