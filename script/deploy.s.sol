@@ -55,6 +55,10 @@ contract Deploy is Script {
             console.log("TestERC20 | %s", address(testErc20));
         }
 
+        proxy.addContract("vault", address(vault));
+        proxy.addContract("bridge", address(bridge));
+        proxy.completeContractInit();
+
         vm.stopBroadcast();
     }
 
