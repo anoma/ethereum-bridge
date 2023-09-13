@@ -1,5 +1,5 @@
-//SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.17;
+//SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
