@@ -20,4 +20,33 @@ The smart contracts used to operate the namada bridge on ethereum are:
 
 # Development
 
-Development is done with [`foundry`](https://getfoundry.sh/), aided by [`just`](https://just.systems/). Check out some commands available during development with `just --list`.
+Development is done with [`foundry`](https://getfoundry.sh/), aided by [`just`](https://just.systems/).
+All available commands can be queried with `just --list`.
+
+## Running a development Ethereum node
+
+```
+$ just anvil
+```
+
+## Deploying contracts
+
+```
+$ just anvil-deploy <bridge-validator-set> <governance-validator-set>
+```
+
+Example JSON validator sets can be found inside of the
+[scripts directory](script/).
+
+## Broadcast a TestERC20 transaction
+
+```
+$ just anvil-allow <transfer-amount>
+$ just anvil-transfer <target-namada-addr> <transfer-amount>
+```
+
+## Start a Solidity REPL
+
+```
+$ just
+```
