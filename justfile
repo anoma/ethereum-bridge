@@ -46,3 +46,6 @@ anvil-allow TRANSFER_AMOUNT="1000":
             --broadcast \
             --via-ir \
             --sender {{DEFAULT-SIGNER}}
+
+bulid:
+    @forge b --via-ir
