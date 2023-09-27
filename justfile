@@ -3,7 +3,8 @@ DEFAULT-SIGNER := "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 default:
     # drop into a chisel shell by default, with {{DEFAULT-SIGNER}}
     # as the default tx signer, and some imported utils
-    @./script/ptypipe script/repl.s.sol chisel \
+    @chisel \
+        --prelude script/include.s.sol \
         --fork-url http://localhost:8545 \
         --sender {{DEFAULT-SIGNER}} \
         --tx-origin {{DEFAULT-SIGNER}}
