@@ -53,5 +53,5 @@ anvil-allow TRANSFER_AMOUNT="1000":
             --via-ir \
             --sender {{DEFAULT-SIGNER}}
 
-bulid:
+build:
     @forge b --via-ir
