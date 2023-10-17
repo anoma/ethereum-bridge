@@ -57,4 +57,4 @@ build:
     @forge b --via-ir --sizes
 
 test:
-    @forge test -vvv --via-ir --ffi
+    @forge test -vvv --via-ir --ffi --gas-report
