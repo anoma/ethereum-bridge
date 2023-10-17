@@ -57,4 +57,4 @@ build:
     @forge b --via-ir
 
 test:
-    @forge test -vvv --via-ir
+    @forge test -vvv --via-ir --ffi
