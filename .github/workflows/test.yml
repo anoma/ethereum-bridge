@@ -1,4 +1,4 @@
-name: test
+name: Build and Test
 
 on: 
   pull_request:
@@ -24,10 +24,12 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+      - name: Install just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
       - name: Run Forge build
         run: |
           forge --version
-          forge build --sizes
+          just build
       - name: Run Forge tests
         run: |
           forge test -vvv --via-ir
