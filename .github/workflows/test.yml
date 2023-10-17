@@ -32,4 +32,4 @@ jobs:
           just build
       - name: Run Forge tests
         run: |
-          forge test -vvv --via-ir
+          just test
