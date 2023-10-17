@@ -1,6 +1,12 @@
-name: test
+name: Build and Test
 
-on: workflow_dispatch
+on: 
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
 env:
   FOUNDRY_PROFILE: ci
@@ -14,21 +20,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
-
+      - name: Install just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
       - name: Run Forge build
         run: |
           forge --version
-          forge build --sizes
-        id: build
-
+          just build
       - name: Run Forge tests
         run: |
-          forge test -vvv --via-ir
-        id: test
+          just test

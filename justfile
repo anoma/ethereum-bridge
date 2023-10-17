@@ -54,4 +54,7 @@ anvil-allow TRANSFER_AMOUNT="1000":
             --sender {{DEFAULT-SIGNER}}
 
 build:
-    @forge b --via-ir
+    @forge b --via-ir --sizes
+
+test:
+    @forge test -vvv --via-ir --ffi --gas-report
