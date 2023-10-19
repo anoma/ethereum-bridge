@@ -7,3 +7,6 @@
 [submodule "lib/foundry-random"]
 	path = lib/foundry-random
 	url = https://github.com/joejordan/foundry-random
+[submodule "lib/create3-factory"]
+	path = lib/create3-factory
+	url = https://github.com/zeframlou/create3-factory
