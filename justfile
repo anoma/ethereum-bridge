@@ -19,14 +19,25 @@ anvil:
     # start anvil, producing blocks every 10s
     @anvil -b 10
 
-anvil-deploy BRIDGE_VALSET_JSON GOVERNANCE_VALSET_JSON NATIVE_TOKEN_NAME="Wrapped NAM" NATIVE_TOKEN_SYMBOL="wNAM":
+anvil-deploy CREATE_ADDRESS BRIDGE_VALSET_JSON GOVERNANCE_VALSET_JSON DEPLOY NATIVE_TOKEN_NAME="Wrapped NAM" NATIVE_TOKEN_SYMBOL="wNAM":
     @\
+    CREATE_ADDRESS="{{CREATE_ADDRESS}}" \
     BRIDGE_VALSET_JSON="{{BRIDGE_VALSET_JSON}}" \
     GOVERNANCE_VALSET_JSON="{{GOVERNANCE_VALSET_JSON}}" \
+    DEPLOY="{{DEPLOY}}" \
     NATIVE_TOKEN_NAME="{{NATIVE_TOKEN_NAME}}" \
     NATIVE_TOKEN_SYMBOL="{{NATIVE_TOKEN_SYMBOL}}" \
     MNEMONIC="test test test test test test test test test test test junk" \
         forge script script/deploy.s.sol:Deploy \
+            --fork-url http://localhost:8545 \
+            --broadcast \
+            --via-ir \
+            --sender {{DEFAULT-SIGNER}}
+
+anvil-deploy-create:
+    @\
+    MNEMONIC="test test test test test test test test test test test junk" \
+        forge script script/deploy_create3.s.sol:Deploy \
             --fork-url http://localhost:8545 \
             --broadcast \
             --via-ir \

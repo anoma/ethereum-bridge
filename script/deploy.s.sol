@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
 import "forge-std/Script.sol";
+import "create/CREATE3Factory.sol";
 import "../src/Bridge.sol";
 import "../src/Proxy.sol";
 import "../src/Vault.sol";
@@ -15,8 +16,12 @@ struct ValidatorData {
 }
 
 contract Deploy is Script {
+
     function run() external {
         vm.startBroadcast();
+
+        bool deploy = vm.envOr("DEPLOY", false);
+        address create3Address = vm.envAddress("CREATE_ADDRESS");
 
         string memory bridgeValidatorSetJson = vm.readFile(vm.envString("BRIDGE_VALSET_JSON"));
         string memory governanceValiatorSetJson = vm.readFile(vm.envString("GOVERNANCE_VALSET_JSON"));
@@ -36,28 +41,60 @@ contract Deploy is Script {
 
         string memory mnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(mnemonic, 0);
+        address deployerAddress = vm.addr(deployerPrivateKey);
         vm.rememberKey(deployerPrivateKey);
 
-        Proxy proxy = new Proxy();
-        Vault vault = new Vault(proxy);
-        Token nativeToken = new Token(address(vault), nativeTokenName, nativeTokenSymbol);
-        Bridge bridge =
-        new Bridge(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy);
+        CREATE3Factory factory = CREATE3Factory(create3Address);
+        console.log("deployer    | %s", deployerAddress);
 
-        console.log("Proxy     | %s", address(proxy));
-        console.log("Vault     | %s", address(vault));
-        console.log("Token     | %s", address(nativeToken));
-        console.log("Bridge    | %s", address(bridge));
+        if (deploy) {
+            Proxy proxy = new Proxy();
+            Vault vault = new Vault(proxy);
 
-        if (block.chainid == 31_337) {
-            TestERC20 testErc20 = new TestERC20();
-            testErc20.mint(msg.sender, 10_000);
-            console.log("TestERC20 | %s", address(testErc20));
+            address nativeTokenAddress = factory.deploy(
+                "nativeTokenAddress-1",
+                abi.encodePacked(
+                    type(Token).creationCode, 
+                    abi.encode(address(vault), nativeTokenName, nativeTokenSymbol)
+                )
+            );
+
+            address bridgeAddress = factory.deploy(
+                "bridge-1",
+                abi.encodePacked(
+                    type(Bridge).creationCode, 
+                    abi.encode(1, encodedBridgeValidators, encodedBridgeValidators, encodedGovernanceValidators, encodedGovernanceValidators, proxy)
+                )
+            );
+
+            proxy.addContract("vault", address(vault));
+            proxy.addContract("bridge", bridgeAddress);
+            proxy.completeContractInit();
+
+            console.log("bridge       | %s", bridgeAddress);
+            console.log("wnam         | %s", nativeTokenAddress);
+            console.log("vault    | %s", address(vault));
+            console.log("proxy    | %s", address(proxy));
+        } else {
+            address bridgeAddress = factory.getDeployed(deployerAddress, "bridge-1");
+            address nativeTokenAddress = factory.getDeployed(deployerAddress, "nativeTokenAddress-1");
+            address testErc20Address = factory.getDeployed(deployerAddress, "testerc20-1");
+
+            console.log("bridge       | %s", bridgeAddress);
+            console.log("wnam         | %s", nativeTokenAddress);
+            console.log("testerc20    | %s", testErc20Address);
         }
 
-        proxy.addContract("vault", address(vault));
-        proxy.addContract("bridge", address(bridge));
-        proxy.completeContractInit();
+        if (block.chainid == 31_337 || block.chainid == 11155111) {
+            if (deploy) {
+                TestERC20 testErc20 = new TestERC20();
+                testErc20.mint(msg.sender, 10_000);
+                console.log("testerc20    | %s", address(testErc20));
+            } else {    
+                address testErc20Address = factory.getDeployed(deployerAddress, "testerc20-1");
+                console.log("testerc20    | %s", testErc20Address);
+            }
+        }
 
         vm.stopBroadcast();
     }
